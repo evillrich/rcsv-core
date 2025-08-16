@@ -651,10 +651,17 @@ function handleFormulaError(error: Error): ErrorCode {
 ### 1. Core Libraries
 
 **JavaScript/TypeScript:**
-- **CSV Parsing**: `papaparse` or `csv-parser`
+- **CSV Parsing**: `papaparse` - Universal browser/Node.js support with streaming, error recovery, and Web Workers
 - **Formula Engine**: Custom implementation using `chevrotain` for parsing
 - **Charts**: `Chart.js` or `D3.js` for flexibility
 - **Date Handling**: `date-fns` or `luxon`
+
+**Why PapaParse:**
+- **Universal platform support**: Works in both browser and Node.js (essential for "embeddable everywhere")
+- **Error recovery**: Row-by-row error handling aligns with RCSV's lenient parsing mode
+- **Streaming support**: Handles large files progressively up to 10,000+ rows
+- **Web Workers**: Offload parsing to background threads in browser environments
+- **Flexible parsing**: Both synchronous (small embedded tables) and asynchronous (large files) modes
 
 **Python:**
 - **CSV Parsing**: Built-in `csv` module or `pandas`
