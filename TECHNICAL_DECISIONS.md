@@ -63,14 +63,32 @@ After POC validation, split into:
 - **Alternative considered**: Chevrotain (too heavy), hand-written (doesn't scale)
 
 ### 3. Chart Library
-**Decision**: Chart.js (in demo renderer only)
+**Decision**: Chart.js v4.5+ with tree-shaking (renderer only)
 - **Core parser**: NO chart library needed - only parses/validates metadata
-- **Demo renderer**: Uses Chart.js to demonstrate rendering
-- **Rationale**: 
-  - Charts are purely a rendering concern
-  - Core only needs to understand chart metadata structure
-  - Each renderer (web, CLI, PDF) chooses its own visualization approach
-- **Key insight**: The core parser treats charts like any other metadata
+- **Renderer**: Uses Chart.js with selective imports to minimize bundle
+
+**2024 Research Results**:
+- **Chart.js**: ~80KB with tree-shaking (vs 265KB full), excellent docs, active development
+- **uPlot**: ~48KB but poor documentation, time-series focused
+- **Frappe Charts**: ~19KB but unmaintained (4 years old)
+- **Plotly.js**: 3.5MB - too heavy for embedding
+
+**Chart.js Tree-Shaking Implementation**:
+```typescript
+// Import only needed components (~80KB vs 265KB)
+import {
+  Chart, BarController, LineController, PieController,
+  CategoryScale, LinearScale, BarElement, LineElement,
+  PointElement, ArcElement, Title, Tooltip, Legend
+} from 'chart.js';
+```
+
+**Rationale**: 
+- **Best documentation** - Critical for implementation
+- **Performance improvements** - 2024 version handles large datasets
+- **Future-proof** - Can add features incrementally
+- **Bundle size acceptable** - 80KB is reasonable for full chart functionality
+- **Active maintenance** - Regular updates, huge community
 
 ### 4. Date Handling
 **Decision**: Native JavaScript Date for POC
