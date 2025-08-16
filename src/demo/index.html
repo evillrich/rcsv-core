@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCSV Demo - Rich CSV Parser & Renderer</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <header>
+        <h1>RCSV Demo</h1>
+        <p>Rich CSV (RCSV) - Markdown for Spreadsheets</p>
+    </header>
+
+    <main>
+        <section id="input-section">
+            <h2>Input RCSV</h2>
+            <textarea id="rcsv-input" rows="15" cols="80">
+## Chart: type=bar, title="Budget Overview", x=Category, y=Budget
+Category:text,Budget:currency,Actual:currency,Total:currency
+Housing,2000,1950,=B2+C2
+Food,800,850,=B3+C3
+Transport,400,425,=B4+C4
+Total,=SUM(B2:B4),=SUM(C2:C4),=SUM(D2:D4)
+            </textarea>
+            <button id="parse-btn">Parse & Render</button>
+        </section>
+
+        <section id="output-section">
+            <h2>Rendered Output</h2>
+            <div id="output-container"></div>
+        </section>
+
+        <section id="json-section">
+            <h2>Parsed Structure (JSON)</h2>
+            <pre id="json-output"></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>RCSV POC Demo - <a href="https://github.com/evillrich/rcsv-core">GitHub</a></p>
+    </footer>
+
+    <script type="module" src="./demo.ts"></script>
+</body>
+</html>

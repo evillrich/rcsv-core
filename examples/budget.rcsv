@@ -1,0 +1,14 @@
+# Title: Monthly Budget Tracker
+# Author: Finance Team
+# Created: 2024-01-15
+
+## Chart: type=bar, title="Budget Overview", x=Category, y=Budget
+## Columns: Category:text, Budget:currency:right, Actual:currency:right, Total:currency:right:bold
+
+Category,Budget,Actual,Total
+Housing,2000,1950,=B2+C2
+Food,800,850,=B3+C3
+Transport,400,425,=B4+C4
+Entertainment,300,275,=B5+C5
+Utilities,200,210,=B6+C6
+Total,=SUM(B2:B6),=SUM(C2:C6),=SUM(D2:D6)
