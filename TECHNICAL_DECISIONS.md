@@ -51,13 +51,16 @@ After POC validation, split into:
 - **POC Usage**: Synchronous parsing for simplicity
 
 ### 2. Formula Parser
-**Decision**: Custom recursive descent parser
+**Decision**: Peggy (PEG parser generator)
 - **Rationale**: 
-  - Chevrotain is overkill for POC (only SUM and basic math)
-  - Full control over error messages
-  - Smaller bundle size
-  - Educational value for understanding requirements
-- **MVP**: Evaluate Chevrotain if formula complexity grows
+  - **Scales to full spec**: Handles 30+ functions from MVP and future backlog
+  - **Balanced approach**: More powerful than hand-written, lighter than Chevrotain
+  - **Bundle size**: ~80KB vs Chevrotain's 150KB (important for embedding)
+  - **Proven for formulas**: Used by spreadsheet tools and math expression parsers
+  - **Good error messages**: Sufficient for formula syntax errors
+  - **Simple grammar syntax**: Easy to maintain and extend
+  - **No runtime overhead**: Parser generated at build time
+- **Alternative considered**: Chevrotain (too heavy), hand-written (doesn't scale)
 
 ### 3. Chart Library
 **Decision**: Chart.js (in demo renderer only)
