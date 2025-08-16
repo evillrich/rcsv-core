@@ -182,7 +182,60 @@ function parseSheets(sheets: SheetRawData[]): Sheet[]
 - Easier to handle multi-sheet documents
 - Metadata available before parsing data
 
-### 11. Formula Engine Design
+### 11. Type Inference Algorithm
+
+**Decision**: Sample-based inference with configurable parameters
+
+**Algorithm**:
+```typescript
+interface TypeInferenceConfig {
+  sampleSize: number;      // Default: 100 rows
+  confidenceThreshold: number; // Default: 0.8 (80%)
+}
+
+function inferColumnType(values: string[], config: TypeInferenceConfig): DataType {
+  const sample = values
+    .filter(v => v.trim() !== '') // Skip empty cells
+    .slice(0, config.sampleSize);
+  
+  if (sample.length === 0) return DataType.TEXT;
+  
+  const typeCounts = new Map<DataType, number>();
+  
+  // Count type matches for each value
+  sample.forEach(value => {
+    const inferredType = inferSingleValue(value);
+    typeCounts.set(inferredType, (typeCounts.get(inferredType) || 0) + 1);
+  });
+  
+  // Check if any type has required confidence
+  const threshold = Math.ceil(sample.length * config.confidenceThreshold);
+  
+  // Priority order: boolean > date > currency > percentage > number > text
+  const priorityOrder = [DataType.BOOLEAN, DataType.DATE, DataType.CURRENCY, 
+                        DataType.PERCENTAGE, DataType.NUMBER];
+  
+  for (const type of priorityOrder) {
+    if ((typeCounts.get(type) || 0) >= threshold) {
+      return type;
+    }
+  }
+  
+  return DataType.TEXT; // Conservative fallback
+}
+```
+
+**Configuration Options**:
+- **Sample size**: 100 rows (default), configurable 50-500
+- **Confidence threshold**: 80% (default), configurable 70-95%
+- **Priority handling**: More specific types beat general ones
+
+**Excel/Sheets Compatibility**:
+- Matches Excel's conservative approach
+- Handles mixed data gracefully
+- Preserves leading zeros (ID columns stay text)
+
+### 12. Formula Engine Design
 
 **Decision**: Direct calculation with simple dependency tracking
 
@@ -202,14 +255,14 @@ type ASTNode =
   | { type: 'binary'; op: string; left: ASTNode; right: ASTNode }
 ```
 
-### 12. Cell Addressing
+### 13. Cell Addressing
 
 **Decision**: A1-style throughout
 - **Internal**: Store as "A1", "B2", etc.
 - **Conversion**: Utils for row/col index when needed
 - **Rationale**: Matches user mental model, simpler for POC
 
-### 13. Error Handling
+### 14. Error Handling
 
 **Decision**: Simple for POC, full codes for MVP
 
@@ -224,14 +277,38 @@ class RCSVError extends Error {
 
 **MVP**: Implement full error codes (#NAME?, #VALUE!, etc.)
 
-### 14. State Management
+### 15. State Management
 
 **Decision**: Plain objects for POC
 - No reactive library
 - Simple mutation for calculations
 - Re-render entire table on change (demo only)
 
-### 15. API Design
+### 16. Configuration Strategy
+
+**Decision**: Configuration object passed to parser
+
+**Type Inference Config**:
+```typescript
+interface RCSVConfig {
+  typeInference: {
+    sampleSize: number;           // Default: 100
+    confidenceThreshold: number;  // Default: 0.8
+  };
+  parser: {
+    strict: boolean;              // Default: false
+    locale?: string;              // Default: auto-detect
+  };
+}
+
+// Usage
+const doc = parseRCSV(text, {
+  typeInference: { sampleSize: 50, confidenceThreshold: 0.7 },
+  parser: { strict: true }
+});
+```
+
+### 17. API Design
 
 **POC Public API**:
 ```typescript
