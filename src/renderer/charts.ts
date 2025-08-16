@@ -10,7 +10,7 @@ import type { ChartMetadata, Sheet } from '../core/engine/types';
  * @param sheet - Sheet containing the data
  * @returns Canvas element with rendered chart
  */
-export function renderChart(chart: ChartMetadata, sheet: Sheet): HTMLCanvasElement {
+export function renderChart(_chart: ChartMetadata, _sheet: Sheet): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.className = 'rcsv-chart';
   

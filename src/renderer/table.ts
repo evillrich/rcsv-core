@@ -9,7 +9,7 @@ import type { Sheet } from '../core/engine/types';
  * @param sheet - Sheet to render
  * @returns HTML table element
  */
-export function renderTable(sheet: Sheet): HTMLTableElement {
+export function renderTable(_sheet: Sheet): HTMLTableElement {
   const table = document.createElement('table');
   table.className = 'rcsv-table';
   

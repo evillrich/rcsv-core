@@ -10,7 +10,7 @@ import type { RCSVDocument } from '../engine/types';
  * @param text - Raw RCSV text
  * @returns Parsed document (not yet calculated)
  */
-export function parseStructure(text: string): RCSVDocument {
+export function parseStructure(_text: string): RCSVDocument {
   // TODO: Implement parser
   // 1. Extract metadata and comments
   // 2. Split into sheets

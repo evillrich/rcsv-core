@@ -43,7 +43,7 @@ export function toJSON(doc: RCSVDocument): object {
  * @param doc - Parsed RCSV document
  * @returns CSV string
  */
-export function toCSV(doc: RCSVDocument): string {
+export function toCSV(_doc: RCSVDocument): string {
   // TODO: Implement CSV export
   throw new Error('Not implemented');
 }

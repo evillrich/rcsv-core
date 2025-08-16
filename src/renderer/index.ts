@@ -3,7 +3,7 @@
  * HTML table and chart rendering for RCSV documents
  */
 
-import type { RCSVDocument, Sheet } from '../core/engine/types';
+import type { RCSVDocument } from '../core/engine/types';
 
 export { renderTable } from './table';
 export { renderChart } from './charts';

@@ -34,7 +34,7 @@ parseButton.addEventListener('click', () => {
     console.log('Success!', doc);
   } catch (error) {
     console.error('Error:', error);
-    outputContainer.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+    outputContainer.innerHTML = `<div class="error">Error: ${(error as Error).message}</div>`;
     jsonOutput.textContent = '';
   }
 });
