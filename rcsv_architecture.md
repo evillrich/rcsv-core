@@ -654,7 +654,7 @@ function handleFormulaError(error: Error): ErrorCode {
 - **CSV Parsing**: `papaparse` - Universal browser/Node.js support with streaming, error recovery, and Web Workers
 - **Formula Engine**: Custom implementation using `peggy` parser generator - balanced approach between power and bundle size
 - **Charts**: `Chart.js` v4.5+ with tree-shaking (renderer only) - 80KB with selective imports, excellent docs, active development
-- **Date Handling**: `date-fns` or `luxon`
+- **Date Handling**: `date-fns` - Required dependency for robust EU/US date parsing, ~5KB tree-shaken
 
 **Why PapaParse:**
 - **Universal platform support**: Works in both browser and Node.js (essential for "embeddable everywhere")

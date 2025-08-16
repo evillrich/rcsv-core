@@ -56,7 +56,8 @@
     "vitest": "^1.0.0"
   },
   "dependencies": {
-    "papaparse": "^5.4.1"
+    "papaparse": "^5.4.1",
+    "date-fns": "^3.6.0"
   },
   "repository": {
     "type": "git",

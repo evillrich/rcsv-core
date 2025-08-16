@@ -91,9 +91,34 @@ import {
 - **Active maintenance** - Regular updates, huge community
 
 ### 4. Date Handling
-**Decision**: Native JavaScript Date for POC
-- **Rationale**: Sufficient for basic date parsing
-- **MVP**: Add date-fns when more date functions needed
+**Decision**: date-fns as required dependency
+- **Bundle Size**: ~5KB (tree-shaken to only needed functions)
+- **EU/US Format Support**: Robust parsing for both DD/MM/YYYY and MM/DD/YYYY
+- **Industry Reality**: 31M weekly downloads - most embedding apps already have it
+- **Zero Fallback**: No complexity of native Date fallbacks
+
+**Required Functions**:
+```typescript
+import { parse, isValid, getYear, getMonth, getDate } from 'date-fns';
+
+// Robust date parsing with locale support
+function parseRCSVDate(dateStr: string, locale: 'US' | 'EU' = 'US'): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return parse(dateStr, 'yyyy-MM-dd', new Date());
+  }
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+    const format = locale === 'EU' ? 'dd/MM/yyyy' : 'MM/dd/yyyy';
+    return parse(dateStr, format, new Date());
+  }
+  throw new Error(`Invalid date: ${dateStr}`);
+}
+```
+
+**Rationale**:
+- **Most target apps already use date-fns** (business dashboards, CRM, analytics)
+- **Reliable EU date parsing** - Critical for international use
+- **No complexity** - Just require the dependency everyone already has
+- **Professional grade** - Handle edge cases that native Date misses
 
 ### 5. Build System
 **Decision**: Vite
