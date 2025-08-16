@@ -351,7 +351,67 @@ const doc = parseRCSV(text, {
 });
 ```
 
-### 17. API Design
+### 17. Memory Strategy
+
+**Decision**: Simple in-memory storage for POC/MVP, optimize based on user feedback
+
+**POC/MVP Implementation**:
+```typescript
+interface RCSVDocument {
+  sheets: Sheet[];
+  metadata: DocumentMetadata;
+  memoryStats: {
+    estimatedRows: number;
+    estimatedMemoryMB: number;
+  };
+}
+
+interface Sheet {
+  name: string;
+  data: CellValue[][];     // Simple 2D array - all data in memory
+  charts: ChartMetadata[];
+  rowCount: number;
+  columnCount: number;
+}
+
+// Size limits with clear error messages
+const MEMORY_LIMITS = {
+  maxRows: 10000,          // Target from spec
+  maxMemoryMB: 50,         // Target from spec  
+  warnAtRows: 5000         // Early warning
+};
+```
+
+**Memory Estimation**:
+- **Small doc** (100 rows): ~100KB
+- **Medium doc** (1,000 rows): ~1MB  
+- **Large doc** (10,000 rows): ~10MB
+- **At limit**: Clear error with guidance
+
+**Error Handling**:
+```typescript
+class RCSVMemoryError extends Error {
+  constructor(rows: number, limit: number) {
+    super(`Dataset too large: ${rows} rows exceeds limit of ${limit}. 
+           For large datasets, consider Excel/Sheets or breaking into multiple files.`);
+  }
+}
+```
+
+**Future Optimization Path** (based on user feedback):
+1. **If users hit limits frequently**: Implement lazy loading/virtual scrolling
+2. **If memory usage problematic**: Add sparse cell storage (Map vs Array)
+3. **If parse time slow**: Add streaming parser for large files
+4. **If charts need more data**: Implement data sampling for chart generation
+
+**Rationale**:
+- **Covers 95% of target use cases** - Budget trackers, dashboards, reports
+- **Simple implementation** - Reduces POC/MVP complexity
+- **Clear upgrade path** - Can optimize based on real user needs
+- **Aligns with "good enough"** - Handle typical business scenarios
+- **User-driven optimization** - Don't optimize for problems we don't have yet
+
+### 18. API Design
 
 **POC Public API**:
 ```typescript
