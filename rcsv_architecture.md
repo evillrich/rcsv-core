@@ -1,5 +1,40 @@
 # RCSV Implementation Architecture
 
+## Implementation Phases
+
+### POC (Proof of Concept) Scope
+
+**Minimal viable parser to validate core concepts:**
+
+- **Single sheet support only**
+- **Basic data types**: `text`, `number`, `currency`
+- **One formula function**: `SUM()`
+- **Basic cell references**: `=A1+B2`
+- **One chart type**: `bar`
+- **No formatting support**
+
+**POC Example:**
+```csv
+## Chart: type=bar, title="Budget Overview", x=Category, y=Budget
+Category:text,Budget:currency,Actual:currency,Total:currency
+Housing,2000,1950,=B2+C2
+Food,800,850,=B3+C3
+Total,=SUM(B2:B3),=SUM(C2:C3),=SUM(D2:D3)
+```
+
+### MVP (v1.0) Scope
+
+**Full feature set for public release:**
+
+- **Multi-sheet support** with cross-references
+- **All data types**: `text`, `number`, `currency`, `percentage`, `date`, `boolean`, `category`
+- **Essential functions**: Mathematical, logical, lookup, text, date
+- **All chart types**: `bar`, `column`, `line`, `pie`, `scatter`
+- **Column formatting**: colors, bold, italic, alignment
+- **Type inference** for untyped columns
+- **Comprehensive error handling** with standard error codes
+- **Parser modes**: strict and lenient
+
 ## Repository Structure
 
 The RCSV ecosystem is designed as a modular set of repositories to enable flexible adoption and community contribution:
@@ -132,6 +167,7 @@ interface Cell {
   formatting?: CellFormatting;
   dependencies?: CellReference[];
   dependents?: CellReference[];
+  validationList?: string[]; // For category type
 }
 ```
 
@@ -179,15 +215,25 @@ enum TokenType {
 ### 3. Type Inference Algorithm
 
 ```typescript
-function inferType(value: string): DataType {
-  // Boolean check
+enum DataType {
+  TEXT = 'text',
+  NUMBER = 'number',
+  CURRENCY = 'currency',
+  PERCENTAGE = 'percentage',
+  DATE = 'date',
+  BOOLEAN = 'boolean',
+  CATEGORY = 'category'
+}
+
+function inferType(value: string, validationList?: string[]): DataType {
+  // Boolean check (highest priority)
   if (/^(true|false)$/i.test(value)) return DataType.BOOLEAN;
   
   // Date check (ISO format first, then common formats)
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return DataType.DATE;
   if (/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})$/.test(value)) return DataType.DATE;
   
-  // Currency check
+  // Currency check (currency symbols)
   if (/^[\$€£¥][\d,]+\.?\d*$/.test(value)) return DataType.CURRENCY;
   
   // Percentage check
@@ -196,8 +242,23 @@ function inferType(value: string): DataType {
   // Number check
   if (/^-?\d+\.?\d*$/.test(value)) return DataType.NUMBER;
   
+  // Category check (if validation list provided)
+  if (validationList && validationList.includes(value)) {
+    return DataType.CATEGORY;
+  }
+  
   // Default to text
   return DataType.TEXT;
+}
+
+// Parse category type with validation
+function parseColumnType(typeStr: string): { type: DataType; validationList?: string[] } {
+  const categoryMatch = typeStr.match(/^category\((.+)\)$/);
+  if (categoryMatch) {
+    const validationList = categoryMatch[1].split(',').map(s => s.trim());
+    return { type: DataType.CATEGORY, validationList };
+  }
+  return { type: typeStr as DataType };
 }
 ```
 
@@ -436,9 +497,73 @@ class CalculationEngine {
 
 ### 1. Chart Data Processing
 ```typescript
+interface ChartMetadata {
+  type: 'bar' | 'column' | 'line' | 'pie' | 'scatter';
+  title?: string;
+  x?: string;
+  y?: string | string[]; // Multiple columns for multi-series
+  series?: string[]; // Custom series names
+  values?: string; // For pie charts
+  labels?: string; // For pie charts
+}
+
 function prepareChartData(chart: ChartMetadata, sheet: Sheet): ChartData {
+  // Handle multi-series charts
+  if (Array.isArray(chart.y)) {
+    const xColumn = sheet.getColumn(chart.x);
+    const series = chart.series || chart.y;
+    
+    const datasets = chart.y.map((yCol, idx) => {
+      const yColumn = sheet.getColumn(yCol);
+      const data = [];
+      for (let i = 0; i < sheet.rowCount; i++) {
+        data.push({
+          x: xColumn.getValue(i),
+          y: yColumn.getValue(i)
+        });
+      }
+      return {
+        label: series[idx],
+        data: data
+      };
+    });
+    
+    return {
+      type: chart.type,
+      datasets: datasets,
+      options: {
+        title: chart.title,
+        responsive: true
+      }
+    };
+  }
+  
+  // Handle pie charts
+  if (chart.type === 'pie') {
+    const valuesColumn = sheet.getColumn(chart.values);
+    const labelsColumn = sheet.getColumn(chart.labels);
+    
+    const data = [];
+    for (let i = 0; i < sheet.rowCount; i++) {
+      data.push({
+        label: labelsColumn.getValue(i),
+        value: valuesColumn.getValue(i)
+      });
+    }
+    
+    return {
+      type: 'pie',
+      data: data,
+      options: {
+        title: chart.title,
+        responsive: true
+      }
+    };
+  }
+  
+  // Handle single series charts
   const xColumn = sheet.getColumn(chart.x);
-  const yColumn = sheet.getColumn(chart.y);
+  const yColumn = sheet.getColumn(chart.y as string);
   
   const data = [];
   for (let i = 0; i < sheet.rowCount; i++) {
@@ -465,30 +590,61 @@ Each chart type maps to specific rendering library configurations:
 - **Line**: Line charts with optional points
 - **Pie**: Pie charts with percentage labels
 - **Scatter**: X-Y scatter plots
+- **Multi-series**: Support for multiple data series in line, bar, and column charts
 
 ## Error Handling Strategy
 
-### 1. Parse Error Recovery
+### 1. Parser Modes
 ```typescript
-function parseWithErrorRecovery(input: string): ParseResult {
+interface ParserOptions {
+  strict: boolean; // Default: false (lenient mode)
+  locale?: string; // For internationalization
+}
+
+function parseRCSV(input: string, options: ParserOptions = { strict: false }): ParseResult {
   const errors: ParseError[] = [];
   const warnings: ParseWarning[] = [];
   
-  try {
-    // Attempt full parse
-    return parseRCSV(input);
-  } catch (error) {
-    // Fallback to line-by-line parsing
-    return parseLineByLine(input, errors, warnings);
+  if (options.strict) {
+    // Strict mode: fail on any error
+    return parseStrict(input);
+  } else {
+    // Lenient mode: continue with warnings
+    return parseLenient(input, errors, warnings);
   }
 }
 ```
 
-### 2. Graceful Degradation
-- Invalid metadata → Skip with warning
-- Unknown functions → Display as `#NAME?`
-- Type mismatches → Fall back to text display
-- Circular references → Attempt resolution, then error
+### 2. Standard Error Codes
+```typescript
+enum ErrorCode {
+  NAME_ERROR = '#NAME?',     // Unknown function or named range
+  VALUE_ERROR = '#VALUE!',    // Wrong type of argument
+  REF_ERROR = '#REF!',       // Invalid cell reference
+  DIV_ZERO = '#DIV/0!',      // Division by zero
+  CIRCULAR = '#CIRCULAR!',    // Unresolved circular reference
+  NULL_ERROR = '#NULL!',     // Intersection of ranges is null
+  NUM_ERROR = '#NUM!',       // Invalid numeric value
+  NA_ERROR = '#N/A'          // Value not available
+}
+
+function handleFormulaError(error: Error): ErrorCode {
+  if (error instanceof UnknownFunctionError) return ErrorCode.NAME_ERROR;
+  if (error instanceof TypeMismatchError) return ErrorCode.VALUE_ERROR;
+  if (error instanceof InvalidReferenceError) return ErrorCode.REF_ERROR;
+  if (error instanceof DivisionByZeroError) return ErrorCode.DIV_ZERO;
+  if (error instanceof CircularReferenceError) return ErrorCode.CIRCULAR;
+  if (error instanceof NumericError) return ErrorCode.NUM_ERROR;
+  return ErrorCode.NA_ERROR;
+}
+```
+
+### 3. Graceful Degradation
+- Invalid metadata → Skip with warning (lenient mode) or fail (strict mode)
+- Unknown functions → Display `#NAME?` error
+- Type mismatches → Display `#VALUE!` error
+- Invalid references → Display `#REF!` error
+- Circular references → Attempt resolution, then `#CIRCULAR!`
 
 ## Technology Stack Recommendations
 
@@ -521,11 +677,12 @@ class RCSVParser {
 ```
 
 ### 3. Performance Targets
-- **Parse time**: <100ms for typical documents (target: 1,000-10,000 rows)
-- **Calculation time**: <50ms for formula recalculation
-- **Memory usage**: <50MB for typical documents
-- **File size**: Target <5MB for typical RCSV files
-- **Row limits**: Performance testing will determine practical limits (target support for 10,000+ rows)
+- **Parse time**: <100ms for typical documents (up to 10,000 rows)
+- **Calculation time**: <100ms for formula recalculation
+- **Memory usage**: <50MB for documents within recommended limits
+- **Target capacity**: Up to 10,000 rows for typical interactive performance
+- **Recommended limits**: 100 sheets per document, 1,000 columns per sheet
+- **File size**: Optimized for <5MB RCSV files
 
 ## Testing Strategy
 
@@ -549,6 +706,150 @@ class RCSVParser {
 - Excel import/export accuracy
 - Different platform behaviors
 
+## Internationalization (i18n)
+
+### 1. Locale Support
+```typescript
+interface LocaleSettings {
+  dateFormat: 'ISO' | 'US' | 'EU'; // YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY
+  decimalSeparator: '.' | ',';
+  thousandsSeparator: ',' | '.' | ' ';
+  currencySymbol: string;
+  currencyPosition: 'prefix' | 'suffix';
+}
+
+function detectLocale(): LocaleSettings {
+  // Detect from system settings or browser locale
+  const systemLocale = navigator.language || 'en-US';
+  return getLocaleSettings(systemLocale);
+}
+```
+
+### 2. Canonical Serialization
+```typescript
+// RCSV files MUST use canonical format for data exchange
+const CANONICAL_FORMAT = {
+  decimalSeparator: '.',
+  thousandsSeparator: ',',
+  dateFormat: 'ISO' // YYYY-MM-DD
+};
+
+function serializeNumber(value: number, locale: LocaleSettings): string {
+  // Always serialize to canonical format for file storage
+  return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function parseNumber(text: string, locale: LocaleSettings): number {
+  // Accept locale-specific input but store canonically
+  if (locale.decimalSeparator === ',') {
+    text = text.replace(',', '.');
+  }
+  if (locale.thousandsSeparator !== ',') {
+    text = text.replace(new RegExp(`\\${locale.thousandsSeparator}`, 'g'), '');
+  }
+  return parseFloat(text);
+}
+```
+
+### 3. Date Handling
+```typescript
+function parseDate(text: string, locale: LocaleSettings): Date {
+  // Support multiple formats based on locale
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    // ISO format (universal)
+    return new Date(text);
+  } else if (locale.dateFormat === 'US' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text)) {
+    // MM/DD/YYYY
+    const [month, day, year] = text.split('/');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  } else if (locale.dateFormat === 'EU' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text)) {
+    // DD/MM/YYYY
+    const [day, month, year] = text.split('/');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  }
+  throw new Error('Invalid date format');
+}
+```
+
+## Escaping Rules
+
+### 1. CSV Standard Escaping
+```typescript
+function escapeCSVValue(value: string): string {
+  // Quote if contains comma, quote, or newline
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    // Double quotes to escape them
+    value = value.replace(/"/g, '""');
+    return `"${value}"`;
+  }
+  return value;
+}
+```
+
+### 2. RCSV-Specific Escaping
+```typescript
+// Hash symbols in data are literal, not comments
+function isComment(line: string): boolean {
+  // Comments only at start of line (with optional whitespace)
+  return /^\s*#/.test(line);
+}
+
+// Double colon escaping in column formatting
+function parseColumnFormat(format: string): ColumnFormat {
+  // Replace :: with placeholder, then parse
+  const escaped = format.replace('::', '\u0000');
+  const parts = escaped.split(':');
+  
+  return {
+    name: parts[0].replace('\u0000', ':'),
+    type: parts[1] as DataType,
+    alignment: parts[2] as Alignment,
+    style: parseStyle(parts.slice(3))
+  };
+}
+
+// Sheet name escaping for references
+function escapeSheetName(name: string): string {
+  // Always use quotes if contains spaces or apostrophes
+  if (name.includes(' ') || name.includes("'")) {
+    // Double apostrophes to escape
+    name = name.replace(/'/g, "''");
+    return `'${name}'`;
+  }
+  return name;
+}
+```
+
+### 3. Formatting Without Types
+```typescript
+function parseColumnMetadata(metadata: string): ColumnMetadata {
+  const parts = metadata.split(',').map(s => s.trim());
+  
+  return parts.map(part => {
+    const colParts = part.split(':');
+    const name = colParts[0];
+    
+    // Check if next part is a type or formatting
+    let type: DataType | undefined;
+    let formatIndex = 1;
+    
+    if (colParts[1] && isDataType(colParts[1])) {
+      type = colParts[1] as DataType;
+      formatIndex = 2;
+    }
+    
+    // Parse remaining as formatting
+    const formatting = colParts.slice(formatIndex);
+    
+    return {
+      name,
+      type, // undefined triggers type inference
+      formatting: parseFormatting(formatting)
+    };
+  });
+}
+```
+
 ## Security Considerations
 
 ### 1. Formula Injection Prevention
@@ -568,4 +869,4 @@ class RCSVParser {
 
 ---
 
-*RCSV Implementation Architecture v1.0*
+*RCSV Implementation Architecture v1.1*
