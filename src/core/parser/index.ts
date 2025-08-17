@@ -5,7 +5,7 @@
 
 import Papa from 'papaparse';
 import { DataType, DEFAULT_CONFIG } from '../engine/types';
-import type { RCSVDocument, DocumentMetadata, ChartMetadata, CellValue, ColumnMetadata, TypeInferenceConfig } from '../engine/types';
+import type { RCSVDocument, DocumentMetadata, ChartMetadata, TableMetadata, CellValue, ColumnMetadata, TypeInferenceConfig, ContentBlock } from '../engine/types';
 
 /**
  * Parse RCSV text into document structure
@@ -26,7 +26,7 @@ export function parseStructure(text: string): RCSVDocument {
     const { name, lines: sheetLines } = section;
     
     // Extract sheet-level metadata and charts
-    const { charts, dataStartLine } = extractSheetMetadata(sheetLines);
+    const { charts, tables, contentBlocks, dataStartLine } = extractSheetMetadata(sheetLines);
     
     // Extract CSV data (everything after metadata comments)
     const csvData = sheetLines.slice(dataStartLine).join('\n');
@@ -38,6 +38,8 @@ export function parseStructure(text: string): RCSVDocument {
       name: name || `Sheet${index + 1}`,
       metadata: {
         charts,
+        tables,
+        contentBlocks,
         columns
       },
       data,
@@ -165,10 +167,15 @@ function splitIntoSheets(lines: string[]): Array<{ name: string | null; lines: s
  */
 function extractSheetMetadata(lines: string[]): {
   charts: ChartMetadata[];
+  tables: TableMetadata[];
+  contentBlocks: ContentBlock[];
   dataStartLine: number;
 } {
   const charts: ChartMetadata[] = [];
+  const tables: TableMetadata[] = [];
+  const contentBlocks: ContentBlock[] = [];
   let dataStartLine = 0;
+  let sourceOrder = 0;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -185,6 +192,25 @@ function extractSheetMetadata(lines: string[]): {
         const chart = parseChartMetadata(comment, i + 1);
         if (chart) {
           charts.push(chart);
+          contentBlocks.push({
+            type: 'chart',
+            sourceOrder: sourceOrder++,
+            lineNumber: i + 1,
+            chart
+          });
+        }
+      }
+      // Check if it's a table definition
+      else if (comment.toLowerCase().startsWith('table:')) {
+        const table = parseTableMetadata(comment, i + 1);
+        if (table) {
+          tables.push(table);
+          contentBlocks.push({
+            type: 'table',
+            sourceOrder: sourceOrder++,
+            lineNumber: i + 1,
+            table
+          });
         }
       }
     } else if (!line.startsWith('#')) {
@@ -194,7 +220,7 @@ function extractSheetMetadata(lines: string[]): {
     }
   }
   
-  return { charts, dataStartLine };
+  return { charts, tables, contentBlocks, dataStartLine };
 }
 
 /**
@@ -242,6 +268,13 @@ function parseChartMetadata(comment: string, lineNumber: number): ChartMetadata 
           // Single column reference for pie charts
           chart.labels = unquoteValue(value);
           break;
+        case 'position':
+          // Layout positioning
+          const positionValue = unquoteValue(value);
+          if (['bottom', 'right'].includes(positionValue)) {
+            chart.position = positionValue as 'bottom' | 'right';
+          }
+          break;
       }
     }
     
@@ -254,6 +287,37 @@ function parseChartMetadata(comment: string, lineNumber: number): ChartMetadata 
     return chart as ChartMetadata;
   } catch (error) {
     console.warn(`Failed to parse chart metadata at line ${lineNumber}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Parse table metadata from comment line
+ */
+function parseTableMetadata(comment: string, lineNumber: number): TableMetadata | null {
+  try {
+    // Remove "table:" prefix
+    const tableDef = comment.substring(6).trim();
+    
+    // Parse key=value pairs
+    const table: Partial<TableMetadata> = {};
+    const pairs = parseKeyValuePairs(tableDef);
+    
+    for (const [key, value] of pairs) {
+      switch (key.toLowerCase()) {
+        case 'position':
+          // Layout positioning
+          const positionValue = unquoteValue(value);
+          if (['bottom', 'right'].includes(positionValue)) {
+            table.position = positionValue as 'bottom' | 'right';
+          }
+          break;
+      }
+    }
+    
+    return table as TableMetadata;
+  } catch (error) {
+    console.warn(`Failed to parse table metadata at line ${lineNumber}:`, error);
     return null;
   }
 }

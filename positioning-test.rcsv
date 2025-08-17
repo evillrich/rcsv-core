@@ -1,0 +1,10 @@
+# Title: Layout Positioning Demo
+## Chart: type=pie, title="Sales Distribution", values=Sales, labels=Month, position=right
+## Table: position=right  
+## Chart: type=bar, title="Monthly Performance", x=Month, y=Sales, position=bottom
+
+Month:text,Sales:currency,Target:currency
+January,50000,45000
+February,60000,55000
+March,55000,50000
+April,70000,65000

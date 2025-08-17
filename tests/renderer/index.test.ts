@@ -64,19 +64,31 @@ function createMockSheet(
     y: 'Sales'
   }] : [];
 
+  const contentBlocks = hasCharts ? [{
+    type: 'chart' as const,
+    sourceOrder: 0,
+    lineNumber: 1,
+    chart: charts[0]
+  }] : [];
+
   return {
     name,
     metadata: {
       columns: [
         { name: 'Month', type: DataType.TEXT },
         { name: 'Sales', type: DataType.NUMBER }
-      ]
+      ],
+      charts,
+      tables: [],
+      contentBlocks
     },
     charts,
     data: [
-      [{ value: 'Jan', type: DataType.TEXT }, { value: 100, type: DataType.NUMBER }],
-      [{ value: 'Feb', type: DataType.TEXT }, { value: 200, type: DataType.NUMBER }]
-    ]
+      [{ raw: 'Jan', value: 'Jan', type: DataType.TEXT }, { raw: '100', value: 100, type: DataType.NUMBER }],
+      [{ raw: 'Feb', value: 'Feb', type: DataType.TEXT }, { raw: '200', value: 200, type: DataType.NUMBER }]
+    ],
+    rowCount: 2,
+    columnCount: 2
   };
 }
 
@@ -167,36 +179,40 @@ describe('renderRCSV', () => {
     const sheetDiv = container.querySelector('.rcsv-sheet');
     const children = Array.from(sheetDiv?.children || []);
 
-    // Charts container should come before table wrapper
-    const chartsIndex = children.findIndex(el => el.classList.contains('rcsv-charts'));
-    const tableIndex = children.findIndex(el => el.classList.contains('rcsv-table-wrapper'));
+    // Find layout rows containing chart and table
+    const chartRowIndex = children.findIndex(el => 
+      el.classList.contains('rcsv-layout-row') && 
+      el.querySelector('.rcsv-chart-wrapper')
+    );
+    const tableRowIndex = children.findIndex(el => 
+      el.classList.contains('rcsv-layout-row') && 
+      el.querySelector('.rcsv-table-wrapper')
+    );
 
-    expect(chartsIndex).toBeLessThan(tableIndex);
-    expect(chartsIndex).toBeGreaterThan(-1);
-    expect(tableIndex).toBeGreaterThan(-1);
+    expect(chartRowIndex).toBeLessThan(tableRowIndex);
+    expect(chartRowIndex).toBeGreaterThan(-1);
+    expect(tableRowIndex).toBeGreaterThan(-1);
   });
 
-  it('should render charts in charts container', () => {
+  it('should render charts in layout rows', () => {
     const doc = createMockDocument([createMockSheet('TestSheet', true)]);
 
     renderRCSV(doc, container);
 
-    const chartsContainer = container.querySelector('.rcsv-charts');
-    const chartWrapper = chartsContainer?.querySelector('.rcsv-chart-wrapper');
+    const chartWrapper = container.querySelector('.rcsv-chart-wrapper');
     const chart = chartWrapper?.querySelector('.mock-chart');
 
-    expect(chartsContainer).toBeTruthy();
     expect(chartWrapper).toBeTruthy();
     expect(chart).toBeTruthy();
   });
 
-  it('should not render charts container if no charts', () => {
+  it('should not render chart wrappers if no charts', () => {
     const doc = createMockDocument([createMockSheet('TestSheet', false)]);
 
     renderRCSV(doc, container);
 
-    const chartsContainer = container.querySelector('.rcsv-charts');
-    expect(chartsContainer).toBeNull();
+    const chartWrapper = container.querySelector('.rcsv-chart-wrapper');
+    expect(chartWrapper).toBeNull();
   });
 
   it('should render table in table wrapper', () => {
@@ -242,6 +258,7 @@ describe('renderRCSV', () => {
     renderRCSV(doc, container);
 
     const chartError = container.querySelector('.rcsv-chart-error');
+    expect(chartError).toBeTruthy();
     expect(chartError?.textContent).toContain('Chart rendering error: Chart rendering failed');
   });
 

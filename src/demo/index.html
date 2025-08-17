@@ -16,33 +16,28 @@
         <section id="input-section">
             <h2>Input RCSV</h2>
             <textarea id="rcsv-input" rows="25" cols="80">
-# Title: Q4 2024 Financial Report
-# Author: Finance Team
+# Title: Layout Positioning Demo
+# Author: RCSV Team
 
-# Sheet: Revenue
-## Chart: type=bar, title="Monthly Revenue", x=Month, y=Amount
-Month:text,Amount:currency,Growth:percentage
-October,45000,
-November,52000,=(B3-B2)/B2
-December,61000,=(B4-B3)/B3
-Total,=SUM(B2:B4),=AVERAGE(C3:C4)
+## Chart: type=bar, title="Monthly Performance", x=Month, y=Sales
+## Chart: type=pie, title="Sales Distribution", values=Sales, labels=Month, position=right
+## Table: position=right
 
-# Sheet: Expenses
-## Chart: type=pie, title="Expense Breakdown", values=Amount, labels=Category
-Category:text,Amount:currency,Notes:text
-Salaries,85000,Fixed cost
-Marketing,12000,Q4 campaigns
-Operations,8000,Infrastructure
-Office,5000,Rent and utilities
-Total,=SUM(B2:B5),Monthly expenses
+Month:text,Sales:currency,Target:currency,Variance:currency
+January,50000,45000,=B2-C2
+February,60000,55000,=B3-C3
+March,55000,50000,=B4-C4
+April,70000,65000,=B5-C5
+Total,=SUM(B2:B5),=SUM(C2:C5),=SUM(D2:D5)
 
-# Sheet: Summary
-## Chart: type=line, title="Financial Trend", x=Month, y=Revenue,Expenses,Profit
-Month:text,Revenue:currency,Expenses:currency,Profit:currency
-October,=Revenue!B2,=Expenses!B6,=B2-C2
-November,=Revenue!B3,=Expenses!B6,=B3-C3
-December,=Revenue!B4,=Expenses!B6,=B4-C4
-Total,=Revenue!B5,=Expenses!B6*3,=B5-C5
+# Sheet: Advanced Layout
+## Chart: type=line, title="Trend Analysis", x=Month, y=Sales,Target
+## Chart: type=pie, title="Q1 Summary", values=Sales, labels=Month, position=right
+
+Month:text,Sales:currency,Target:currency
+Q1-Jan,50000,45000
+Q1-Feb,60000,55000
+Q1-Mar,55000,50000
             </textarea>
             <button id="parse-btn">Parse & Render</button>
         </section>

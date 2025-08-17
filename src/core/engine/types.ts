@@ -28,6 +28,11 @@ export interface ChartMetadata {
   series?: string[];
   values?: string;
   labels?: string;
+  position?: 'bottom' | 'right';
+}
+
+export interface TableMetadata {
+  position?: 'bottom' | 'right';
 }
 
 export interface ColumnMetadata {
@@ -42,9 +47,19 @@ export interface ColumnMetadata {
   };
 }
 
+export interface ContentBlock {
+  type: 'chart' | 'table';
+  sourceOrder: number;
+  lineNumber: number;
+  chart?: ChartMetadata;
+  table?: TableMetadata;
+}
+
 export interface SheetMetadata {
   charts: ChartMetadata[];
+  tables: TableMetadata[];
   columns: ColumnMetadata[];
+  contentBlocks: ContentBlock[];
 }
 
 export interface Sheet {
