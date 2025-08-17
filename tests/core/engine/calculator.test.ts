@@ -266,8 +266,8 @@ describe('Calculator Engine', () => {
     it('should calculate COUNTA with mixed data types', () => {
       const rcsv = `A:text,B:number,C:text,CountAll:number
 Hello,10,World,=COUNTA(A2:C2)
-,20,,
-Text,,"",`;
+,20,,=COUNTA(A3:C3)
+Text,,"",=COUNTA(A4:C4)`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -301,8 +301,8 @@ Text,10,More,"=COUNT(A2:C2)","=COUNTA(A2:C2)"`;
     it('should calculate COUNTA with empty cells', () => {
       const rcsv = `A:text,B:text,C:text,CountAll:number
 Value1,,Value3,=COUNTA(A2:C2)
-,,"",
-,,Value6,`;
+,,"",=COUNTA(A3:C3)
+,,Value6,=COUNTA(A4:C4)`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);

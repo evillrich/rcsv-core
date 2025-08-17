@@ -97,12 +97,12 @@ FunctionCall
 FunctionName
   = "SUM"i
   / "AVERAGE"i
+  / "COUNTA"i
   / "COUNT"i
   / "MIN"i
   / "MAX"i
   / "ABS"i
   / "ROUND"i
-  / "COUNTA"i
 
 ArgumentList
   = first:Expression rest:("," Expression)* {

@@ -635,9 +635,15 @@ class SheetCalculator {
   private functionCountA(args: ASTNode[]): number {
     let count = 0;
     for (const arg of args) {
-      const values = this.flattenToValues(this.evaluateAST(arg));
-      // Count non-empty values (any type)
-      count += values.filter(v => this.isNonEmpty(v)).length;
+      if (arg.type === 'range') {
+        // For ranges, get raw cell values to check if they're truly empty
+        const rawValues = this.getRangeRawValues(arg.start, arg.end);
+        count += rawValues.filter(v => this.isCountANonEmpty(v)).length;
+      } else {
+        // For individual cells or expressions, use normal evaluation
+        const values = this.flattenToValues(this.evaluateAST(arg));
+        count += values.filter(v => this.isCountANonEmpty(v)).length;
+      }
     }
     return count;
   }
@@ -674,6 +680,15 @@ class SheetCalculator {
     if (value === null || value === undefined) return false;
     if (typeof value === 'string' && value.trim() === '') return false;
     return true;
+  }
+  
+  /**
+   * COUNTA-specific non-empty check
+   * For COUNTA: only null/undefined are considered empty
+   * Empty strings (""), whitespace, and all other values count as non-empty
+   */
+  private isCountANonEmpty(value: any): boolean {
+    return value !== null && value !== undefined;
   }
   
   private getCellRef(row: number, col: number): string {
@@ -726,6 +741,19 @@ class SheetCalculator {
   getRangeValues(start: string, end: string): any[] {
     const range = this.expandRange(start, end);
     return range.map(ref => this.getCellValue(ref));
+  }
+  
+  /**
+   * Get raw values from a range (for COUNTA to properly handle empty cells)
+   */
+  private getRangeRawValues(start: string, end: string): any[] {
+    const range = this.expandRange(start, end);
+    return range.map(ref => {
+      const cell = this.getCellByRef(ref);
+      // Return the actual raw value, not processed value
+      // If cell doesn't exist, return null (not 0) so COUNTA can count properly
+      return cell?.raw ?? null;
+    });
   }
   
   private expandRange(start: string, end: string): string[] {
