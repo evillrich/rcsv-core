@@ -11,4 +11,4 @@ Food,800,850,=B3+C3
 Transport,400,425,=B4+C4
 Entertainment,300,275,=B5+C5
 Utilities,200,210,=B6+C6
-Total,=SUM(B2:B6),=SUM(C2:C6),=SUM(D2:D6)
+Total,"=SUM(B2:B6)","=SUM(C2:C6)","=SUM(D2:D6)"
