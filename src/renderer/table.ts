@@ -38,11 +38,12 @@ export function renderTable(sheet: Sheet): HTMLTableElement {
       const td = document.createElement('td');
       const column = sheet.metadata.columns[colIndex];
       
-      // Apply cell formatting
-      td.className = `rcsv-cell rcsv-type-${column?.type || cell.type}`;
+      // Apply cell formatting (handle UNSPECIFIED case)
+      const cellType = column?.type === 'UNSPECIFIED' ? cell.type : (column?.type || cell.type);
+      td.className = `rcsv-cell rcsv-type-${cellType}`;
       
       // Format and display the value
-      const displayValue = formatCellValue(cell, column?.type || cell.type);
+      const displayValue = formatCellValue(cell, cellType);
       td.textContent = displayValue;
       
       // Add title attribute to show formula if present

@@ -4,7 +4,8 @@
  */
 
 import { parseFormula } from '../parser/formula';
-import type { RCSVDocument, ASTNode, CellValue, Sheet } from './types';
+import { DEFAULT_CONFIG, DataType } from './types';
+import type { RCSVDocument, ASTNode, CellValue, Sheet, TypeInferenceConfig } from './types';
 
 /**
  * Calculate all formulas in the document
@@ -98,6 +99,206 @@ class SheetCalculator {
           this.calculateCell(cellRef);
         }
       }
+    }
+    
+    // Phase 2: Post-calculation type inference for UNSPECIFIED columns
+    this.applyPhase2TypeInference();
+  }
+  
+  /**
+   * Phase 2: Post-calculation type inference for UNSPECIFIED columns
+   */
+  private applyPhase2TypeInference(): void {
+    const config = DEFAULT_CONFIG.typeInference;
+    
+    for (let colIndex = 0; colIndex < this.sheet.metadata.columns.length; colIndex++) {
+      const column = this.sheet.metadata.columns[colIndex];
+      
+      // Only process columns marked as UNSPECIFIED
+      if (column.type !== 'UNSPECIFIED') {
+        continue;
+      }
+      
+      // Collect all calculated values (including formula results)
+      const values: string[] = [];
+      const sampleSize = Math.min(this.sheet.data.length, config.sampleSize);
+      
+      for (let rowIndex = 0; rowIndex < sampleSize; rowIndex++) {
+        const cell = this.sheet.data[rowIndex]?.[colIndex];
+        if (cell) {
+          // Use calculated value for formulas, raw value for non-formulas
+          const valueToAnalyze = cell.formula ? cell.value : cell.raw;
+          if (valueToAnalyze != null && String(valueToAnalyze).trim() !== '') {
+            values.push(String(valueToAnalyze).trim());
+          }
+        }
+      }
+      
+      // If still no values to analyze, default to TEXT
+      if (values.length === 0) {
+        column.type = DataType.TEXT;
+        this.applyTypeToColumn(colIndex, DataType.TEXT);
+        continue;
+      }
+      
+      // Infer type from calculated values
+      const inferredType = this.inferColumnTypeFromValues(values, config);
+      column.type = inferredType;
+      
+      // Apply the inferred type to all cells in this column
+      this.applyTypeToColumn(colIndex, inferredType);
+    }
+  }
+  
+  /**
+   * Apply a data type to all cells in a column (Phase 2 version)
+   */
+  private applyTypeToColumn(colIndex: number, dataType: DataType): void {
+    for (let rowIndex = 0; rowIndex < this.sheet.data.length; rowIndex++) {
+      const cell = this.sheet.data[rowIndex]?.[colIndex];
+      if (cell) {
+        cell.type = dataType;
+        // Only convert non-formula values (formulas already calculated)
+        if (!cell.formula) {
+          cell.value = this.convertValueForType(cell.raw, dataType);
+        }
+      }
+    }
+  }
+  
+  /**
+   * Infer column type from calculated values (Phase 2 version)
+   */
+  private inferColumnTypeFromValues(values: string[], config: TypeInferenceConfig): DataType {
+    if (values.length === 0) return DataType.TEXT;
+    
+    const sample = values.slice(0, config.sampleSize);
+    const typeCounts = new Map<DataType, number>();
+    
+    // Count type matches for each value
+    sample.forEach(value => {
+      const inferredType = this.inferSingleValueType(value);
+      typeCounts.set(inferredType, (typeCounts.get(inferredType) || 0) + 1);
+    });
+    
+    // Check if any type has required confidence
+    const threshold = Math.ceil(sample.length * config.confidenceThreshold);
+    
+    // Priority order: boolean > date > currency > percentage > number > text
+    const priorityOrder: DataType[] = [DataType.BOOLEAN, DataType.DATE, DataType.CURRENCY, DataType.PERCENTAGE, DataType.NUMBER];
+    
+    for (const type of priorityOrder) {
+      if ((typeCounts.get(type) || 0) >= threshold) {
+        return type;
+      }
+    }
+    
+    return DataType.TEXT; // Conservative fallback
+  }
+  
+  /**
+   * Infer the type of a single value (Phase 2 version)
+   */
+  private inferSingleValueType(value: string): DataType {
+    const trimmed = value.trim();
+    
+    // Boolean check
+    if (/^(true|false|yes|no|y|n)$/i.test(trimmed)) {
+      return DataType.BOOLEAN;
+    }
+    
+    // Currency check (starts with currency symbol or ends with currency code)
+    if (/^[\$£€¥₹][\d,]+\.?\d*$/.test(trimmed) || /^\d+\.?\d*\s*(USD|EUR|GBP|JPY|INR)$/i.test(trimmed)) {
+      return DataType.CURRENCY;
+    }
+    
+    // Percentage check (ends with %)
+    if (/^\d+\.?\d*%$/.test(trimmed)) {
+      return DataType.PERCENTAGE;
+    }
+    
+    // Date check (various formats)
+    if (this.isDateString(trimmed)) {
+      return DataType.DATE;
+    }
+    
+    // Number check (integers or decimals, with optional commas)
+    if (/^-?\d{1,3}(,\d{3})*(\.\d+)?$/.test(trimmed) || /^-?\d+\.?\d*$/.test(trimmed)) {
+      return DataType.NUMBER;
+    }
+    
+    return DataType.TEXT;
+  }
+  
+  /**
+   * Check if a string represents a date (Phase 2 version)
+   */
+  private isDateString(value: string): boolean {
+    // ISO date format: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return !isNaN(Date.parse(value));
+    }
+    
+    // US format: MM/DD/YYYY
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
+      return !isNaN(Date.parse(value));
+    }
+    
+    // EU format: DD/MM/YYYY (harder to validate without context)
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
+      const parts = value.split('/');
+      const day = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      // If day > 12, it's likely DD/MM/YYYY format
+      if (day > 12 && month <= 12) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Convert a raw string value to the appropriate type (Phase 2 version)
+   */
+  private convertValueForType(raw: string, dataType: DataType): any {
+    const trimmed = raw.trim();
+    
+    switch (dataType) {
+      case 'number':
+        // Remove commas and parse as number
+        const numStr = trimmed.replace(/,/g, '');
+        const num = parseFloat(numStr);
+        return isNaN(num) ? trimmed : num;
+        
+      case 'currency':
+        // Extract numeric value from currency
+        const currencyMatch = trimmed.match(/[\d,]+\.?\d*/);
+        if (currencyMatch) {
+          const numVal = parseFloat(currencyMatch[0].replace(/,/g, ''));
+          return isNaN(numVal) ? trimmed : numVal;
+        }
+        return trimmed;
+        
+      case 'percentage':
+        // Convert percentage to decimal
+        const percentMatch = trimmed.match(/^(\d+\.?\d*)%$/);
+        if (percentMatch) {
+          return parseFloat(percentMatch[1]) / 100;
+        }
+        return trimmed;
+        
+      case 'boolean':
+        const lower = trimmed.toLowerCase();
+        return ['true', 'yes', 'y'].includes(lower);
+        
+      case 'date':
+        // Return as Date object
+        const date = new Date(trimmed);
+        return isNaN(date.getTime()) ? trimmed : date;
+        
+      default:
+        return trimmed;
     }
   }
   

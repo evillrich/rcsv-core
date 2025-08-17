@@ -212,7 +212,11 @@ enum TokenType {
 - Handle escaping according to RFC 4180
 - Process column headers separately for type information
 
-### 3. Type Inference Algorithm
+### 3. Two-Phase Type Inference Algorithm
+
+RCSV implements a sophisticated two-phase type inference algorithm that mirrors Excel and Google Sheets behavior for handling columns with mixed values and formulas.
+
+#### Phase 1: Pre-Calculation Inference
 
 ```typescript
 enum DataType {
@@ -225,42 +229,124 @@ enum DataType {
   CATEGORY = 'category'
 }
 
-function inferType(value: string, validationList?: string[]): DataType {
-  // Boolean check (highest priority)
-  if (/^(true|false)$/i.test(value)) return DataType.BOOLEAN;
+interface TypeInferenceConfig {
+  sampleSize: number;           // Default: 100 cells
+  confidenceThreshold: number;  // Default: 0.7 (70%)
+  formulaThreshold: number;     // Default: 0.5 (50%)
+}
+
+function inferColumnTypePhase1(cells: CellValue[], config: TypeInferenceConfig): DataType | 'UNSPECIFIED' {
+  const sample = cells.slice(0, config.sampleSize);
+  const valueCells = sample.filter(cell => !cell.formula);
+  const formulaCells = sample.filter(cell => cell.formula);
   
-  // Date check (ISO format first, then common formats)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return DataType.DATE;
-  if (/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})$/.test(value)) return DataType.DATE;
+  const formulaRatio = formulaCells.length / sample.length;
   
-  // Currency check (currency symbols)
-  if (/^[\$€£¥][\d,]+\.?\d*$/.test(value)) return DataType.CURRENCY;
-  
-  // Percentage check
-  if (/^\d+\.?\d*%$/.test(value)) return DataType.PERCENTAGE;
-  
-  // Number check
-  if (/^-?\d+\.?\d*$/.test(value)) return DataType.NUMBER;
-  
-  // Category check (if validation list provided)
-  if (validationList && validationList.includes(value)) {
-    return DataType.CATEGORY;
+  // If too many formulas, defer to Phase 2
+  if (formulaRatio >= config.formulaThreshold) {
+    return 'UNSPECIFIED';
   }
   
-  // Default to text
+  if (valueCells.length === 0) {
+    return 'UNSPECIFIED';
+  }
+  
+  // Analyze non-formula values for type consistency
+  const typeCounts = new Map<DataType, number>();
+  valueCells.forEach(cell => {
+    const type = inferSingleValueType(cell.raw);
+    typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
+  });
+  
+  // Check for consistent type (≥70% threshold)
+  const threshold = Math.ceil(valueCells.length * config.confidenceThreshold);
+  const priorityOrder = [DataType.BOOLEAN, DataType.DATE, DataType.CURRENCY, 
+                        DataType.PERCENTAGE, DataType.NUMBER];
+  
+  for (const type of priorityOrder) {
+    if ((typeCounts.get(type) || 0) >= threshold) {
+      return type;
+    }
+  }
+  
+  // Mixed types or low confidence - default to TEXT
+  return DataType.TEXT;
+}
+```
+
+#### Phase 2: Post-Calculation Inference
+
+```typescript
+function inferColumnTypePhase2(cells: CellValue[], config: TypeInferenceConfig): DataType {
+  // Apply same logic to calculated formula results
+  const sample = cells.slice(0, config.sampleSize);
+  const typeCounts = new Map<DataType, number>();
+  
+  sample.forEach(cell => {
+    // Use calculated value for formulas, raw value for others
+    const valueToAnalyze = cell.formula ? cell.value : cell.raw;
+    if (valueToAnalyze != null) {
+      const type = inferSingleValueType(String(valueToAnalyze));
+      typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
+    }
+  });
+  
+  // Apply same confidence threshold
+  const threshold = Math.ceil(sample.length * config.confidenceThreshold);
+  const priorityOrder = [DataType.BOOLEAN, DataType.DATE, DataType.CURRENCY, 
+                        DataType.PERCENTAGE, DataType.NUMBER];
+  
+  for (const type of priorityOrder) {
+    if ((typeCounts.get(type) || 0) >= threshold) {
+      return type;
+    }
+  }
+  
+  // Final fallback to TEXT
   return DataType.TEXT;
 }
 
-// Parse category type with validation
-function parseColumnType(typeStr: string): { type: DataType; validationList?: string[] } {
-  const categoryMatch = typeStr.match(/^category\((.+)\)$/);
-  if (categoryMatch) {
-    const validationList = categoryMatch[1].split(',').map(s => s.trim());
-    return { type: DataType.CATEGORY, validationList };
+function inferSingleValueType(value: string): DataType {
+  const trimmed = value.trim();
+  
+  // Boolean check (highest priority)
+  if (/^(true|false|yes|no|y|n)$/i.test(trimmed)) {
+    return DataType.BOOLEAN;
   }
-  return { type: typeStr as DataType };
+  
+  // Currency check (starts with currency symbol)
+  if (/^[\$£€¥₹][\d,]+\.?\d*$/.test(trimmed)) {
+    return DataType.CURRENCY;
+  }
+  
+  // Percentage check (ends with %)
+  if (/^\d+\.?\d*%$/.test(trimmed)) {
+    return DataType.PERCENTAGE;
+  }
+  
+  // Date check (various formats)
+  if (isDateString(trimmed)) {
+    return DataType.DATE;
+  }
+  
+  // Number check (integers or decimals, with optional commas)
+  if (/^-?\d{1,3}(,\d{3})*(\.\d+)?$/.test(trimmed) || /^-?\d+\.?\d*$/.test(trimmed)) {
+    return DataType.NUMBER;
+  }
+  
+  return DataType.TEXT;
 }
 ```
+
+#### Excel/Google Sheets Compatibility
+
+This two-phase approach replicates the behavior of Excel and Google Sheets:
+- **Phase 1** mirrors how both platforms initially analyze column content before formula calculation
+- **Phase 2** matches their post-calculation type refinement process
+- **Column-level application** ensures consistent formatting across the entire column
+- **Threshold-based decisions** provide predictable and user-controllable behavior
+
+The key insight is that both Excel and Google Sheets defer type decisions for formula-heavy columns until after calculation, which RCSV now emulates with the UNSPECIFIED state.
 
 ## Formula Processing
 

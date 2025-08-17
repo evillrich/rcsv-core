@@ -212,34 +212,35 @@ function parseChartMetadata(comment: string, lineNumber: number): ChartMetadata 
     for (const [key, value] of pairs) {
       switch (key.toLowerCase()) {
         case 'type':
-          const typeValue = value.replace(/^["']|["']$/g, '');
+          const typeValue = unquoteValue(value);
           if (['bar', 'column', 'line', 'pie', 'scatter'].includes(typeValue)) {
             chart.type = typeValue as ChartMetadata['type'];
           }
           break;
         case 'title':
-          // Remove quotes only if they wrap the entire value
-          chart.title = value.replace(/^["']|["']$/g, '');
+          // Remove quotes and handle escaped quotes
+          chart.title = unquoteValue(value);
           break;
         case 'x':
           // Single column reference - remove quotes if present
-          chart.x = value.replace(/^["']|["']$/g, '');
+          chart.x = unquoteValue(value);
           break;
         case 'y':
           // Handle multiple y values with proper quote parsing
           chart.y = parseCommaSeparatedValues(value);
           break;
         case 'series':
-          // Handle multiple series values with proper quote parsing  
-          chart.series = parseCommaSeparatedValues(value);
+          // Handle series values - convert to array if needed
+          const seriesValue = parseCommaSeparatedValues(value);
+          chart.series = Array.isArray(seriesValue) ? seriesValue : [seriesValue];
           break;
         case 'values':
           // Single column reference for pie charts
-          chart.values = value.replace(/^["']|["']$/g, '');
+          chart.values = unquoteValue(value);
           break;
         case 'labels':
           // Single column reference for pie charts
-          chart.labels = value.replace(/^["']|["']$/g, '');
+          chart.labels = unquoteValue(value);
           break;
       }
     }
@@ -259,9 +260,11 @@ function parseChartMetadata(comment: string, lineNumber: number): ChartMetadata 
 
 /**
  * Parse comma-separated values that may contain quoted items
+ * Uses CSV-style escaping: quotes are escaped by doubling ("")
  * Examples:
- * - "Revenue,Expenses" -> ["Revenue", "Expenses"]
+ * - "Revenue,Expenses" -> ["Revenue", "Expenses"]  
  * - '"Revenue, After Tax",Expenses' -> ["Revenue, After Tax", "Expenses"]
+ * - '"Sales ""2024""",Profit' -> ["Sales \"2024\"", "Profit"]
  * - 'Revenue' -> "Revenue" (single value)
  */
 function parseCommaSeparatedValues(value: string): string | string[] {
@@ -292,8 +295,8 @@ function parseCommaSeparatedValues(value: string): string | string[] {
       }
     } else {
       // Inside quotes
-      if (char === quoteChar && (i === value.length - 1 || value[i + 1] === ',' || value[i + 1] === ' ')) {
-        // Ending quote
+      if (char === quoteChar) {
+        // End of quoted value
         inQuote = false;
         quoteChar = '';
       } else {
@@ -303,7 +306,7 @@ function parseCommaSeparatedValues(value: string): string | string[] {
   }
   
   // Add the last item
-  if (current) {
+  if (current.trim()) {
     items.push(current.trim().replace(/^["']|["']$/g, ''));
   }
   
@@ -312,72 +315,126 @@ function parseCommaSeparatedValues(value: string): string | string[] {
 }
 
 /**
+ * Remove quotes from a value and handle escaped quotes
+ * "value" -> value
+ * "val""ue" -> val"ue
+ */
+function unquoteValue(value: string): string {
+  if (!value) return value;
+  
+  // Check if wrapped in quotes
+  if ((value.startsWith('"') && value.endsWith('"')) || 
+      (value.startsWith("'") && value.endsWith("'"))) {
+    const quote = value[0];
+    let unquoted = value.slice(1, -1);
+    // Replace doubled quotes with single quotes
+    unquoted = unquoted.replace(new RegExp(quote + quote, 'g'), quote);
+    return unquoted;
+  }
+  
+  return value;
+}
+
+/**
  * Parse key=value pairs, handling quoted values and commas
+ * Uses CSV-style escaping: quotes are escaped by doubling ("")
  * Supports:
  * - Simple values: x=Month
  * - Quoted values: title="Q4 Report, Final"
  * - Comma-separated lists: y=Revenue,Expenses,Profit
  * - Mixed quoted/unquoted lists: y="Revenue, After Tax",Expenses,"Profit, Net"
+ * - Escaped quotes: title="Sales ""2024"" Report"
  */
 function parseKeyValuePairs(input: string): [string, string][] {
   const pairs: [string, string][] = [];
-  let currentKey = '';
-  let currentValue = '';
-  let inValue = false;
-  let inQuote = false;
-  let quoteChar = '';
+  let pos = 0;
   
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    const nextChar = input[i + 1] || '';
+  while (pos < input.length) {
+    // Skip leading whitespace
+    while (pos < input.length && input[pos] === ' ') pos++;
+    if (pos >= input.length) break;
     
-    if (!inValue) {
-      // Looking for key=value
-      if (char === '=') {
-        inValue = true;
-        currentKey = currentKey.trim();
-      } else if (char === ' ' || char === ',') {
-        // Skip whitespace and commas between pairs
-        if (currentKey.trim()) {
-          currentKey += char;
-        }
-      } else {
-        currentKey += char;
-      }
-    } else {
-      // Building value
+    // Find the key (everything before =)
+    let keyEnd = pos;
+    while (keyEnd < input.length && input[keyEnd] !== '=') keyEnd++;
+    
+    if (keyEnd >= input.length) break; // No = found
+    
+    const key = input.substring(pos, keyEnd).trim();
+    pos = keyEnd + 1; // Skip the =
+    
+    // Skip whitespace after =
+    while (pos < input.length && input[pos] === ' ') pos++;
+    
+    // Find the value (handle quoted values and look for next key pattern)
+    let value = '';
+    let inQuote = false;
+    let quoteChar = '';
+    
+    while (pos < input.length) {
+      const char = input[pos];
+      
       if (!inQuote) {
-        if ((char === '"' || char === "'") && (currentValue === '' || currentValue.endsWith(','))) {
-          // Starting a quoted section
+        // Check if starting a quote
+        if ((char === '"' || char === "'") && value === '') {
           inQuote = true;
           quoteChar = char;
-          currentValue += char;
-        } else if (char === ',' && nextChar.match(/\s*\w+\s*=/)) {
-          // This comma separates key=value pairs (next item is a key)
-          pairs.push([currentKey, currentValue.trim()]);
-          currentKey = '';
-          currentValue = '';
-          inValue = false;
+          pos++;
+        } else if (char === ',') {
+          // Check if this comma starts a new key=value pair
+          // Look ahead for pattern: optional spaces, word chars, optional spaces, then =
+          let lookahead = pos + 1;
+          while (lookahead < input.length && input[lookahead] === ' ') lookahead++;
+          
+          let hasKeyPattern = false;
+          if (lookahead < input.length) {
+            // Check if we have word characters followed by optional spaces and =
+            let keyStart = lookahead;
+            while (lookahead < input.length && input[lookahead].match(/\w/)) lookahead++;
+            // Skip optional spaces after key
+            while (lookahead < input.length && input[lookahead] === ' ') lookahead++;
+            if (lookahead < input.length && input[lookahead] === '=' && lookahead > keyStart) {
+              hasKeyPattern = true;
+            }
+          }
+          
+          if (hasKeyPattern) {
+            // This comma separates key=value pairs
+            break;
+          } else {
+            // This comma is part of the value
+            value += char;
+            pos++;
+          }
         } else {
-          currentValue += char;
+          value += char;
+          pos++;
         }
       } else {
         // Inside quotes
-        currentValue += char;
         if (char === quoteChar) {
-          // Check if this closes the quote (not escaped)
-          if (i === 0 || input[i - 1] !== '\\') {
+          // Check if it's escaped (doubled)
+          if (pos + 1 < input.length && input[pos + 1] === quoteChar) {
+            // Escaped quote - add single quote to value
+            value += quoteChar;
+            pos += 2;
+          } else {
+            // End of quoted value
             inQuote = false;
             quoteChar = '';
+            pos++;
           }
+        } else {
+          value += char;
+          pos++;
         }
       }
     }
-  }
-  
-  // Add the last pair
-  if (currentKey && inValue) {
-    pairs.push([currentKey, currentValue.trim()]);
+    
+    pairs.push([key, value.trim()]);
+    
+    // Skip comma separator if present
+    if (pos < input.length && input[pos] === ',') pos++;
   }
   
   return pairs;
@@ -411,9 +468,18 @@ function parseCSVData(csvText: string): {
     return { data: [], columns: [] };
   }
   
+  // Filter out rows that are effectively empty (all cells are empty/whitespace)
+  const filteredRows = rawRows.filter(row => 
+    row.some(cell => cell && cell.trim() !== '')
+  );
+  
+  if (filteredRows.length === 0) {
+    return { data: [], columns: [] };
+  }
+  
   // First row should be column headers with optional type annotations
-  const headerRow = rawRows[0];
-  const dataRows = rawRows.slice(1);
+  const headerRow = filteredRows[0];
+  const dataRows = filteredRows.slice(1);
   
   // Parse column metadata from headers (e.g., "Category:text", "Budget:currency")
   const columns: ColumnMetadata[] = headerRow.map(header => {
@@ -486,29 +552,53 @@ function parseCSVData(csvText: string): {
 }
 
 /**
- * Infer column types for columns without explicit type annotations
+ * Phase 1: Pre-calculation type inference for columns without explicit type annotations
  */
 function inferColumnTypes(data: CellValue[][], columns: ColumnMetadata[], config: TypeInferenceConfig): void {
   for (let colIndex = 0; colIndex < columns.length; colIndex++) {
     const column = columns[colIndex];
     
     // Skip columns that already have explicit type annotations
-    if (column.type) {
-      // Apply the inferred type to all cells in this column
+    if (column.type && column.type !== 'UNSPECIFIED') {
+      // Apply the explicit type to all cells in this column
       applyTypeToColumn(data, colIndex, column.type);
       continue;
     }
     
-    // Collect non-formula values for type inference
+    // Phase 1: Analyze formula vs value ratio
+    const sample = data.slice(0, Math.min(data.length, config.sampleSize));
+    let valueCount = 0;
+    let formulaCount = 0;
     const values: string[] = [];
-    for (let rowIndex = 0; rowIndex < Math.min(data.length, config.sampleSize); rowIndex++) {
-      const cell = data[rowIndex]?.[colIndex];
-      if (cell && !cell.formula && cell.raw.trim() !== '') {
-        values.push(cell.raw.trim());
+    
+    for (let rowIndex = 0; rowIndex < sample.length; rowIndex++) {
+      const cell = sample[rowIndex]?.[colIndex];
+      if (cell && cell.raw.trim() !== '') {
+        if (cell.formula) {
+          formulaCount++;
+        } else {
+          valueCount++;
+          values.push(cell.raw.trim());
+        }
       }
     }
     
-    // Infer the column type
+    const totalCells = valueCount + formulaCount;
+    const formulaRatio = totalCells > 0 ? formulaCount / totalCells : 0;
+    
+    // If too many formulas, defer to Phase 2 (post-calculation)
+    if (formulaRatio >= config.formulaThreshold) {
+      column.type = 'UNSPECIFIED';
+      continue; // Don't apply type yet, wait for Phase 2
+    }
+    
+    // If not enough non-formula values, defer to Phase 2
+    if (values.length === 0) {
+      column.type = 'UNSPECIFIED';
+      continue;
+    }
+    
+    // Phase 1: Infer type from non-formula values
     const inferredType = inferColumnType(values, config);
     column.type = inferredType;
     
@@ -520,13 +610,20 @@ function inferColumnTypes(data: CellValue[][], columns: ColumnMetadata[], config
 /**
  * Apply a data type to all cells in a column
  */
-function applyTypeToColumn(data: CellValue[][], colIndex: number, dataType: DataType): void {
+function applyTypeToColumn(data: CellValue[][], colIndex: number, dataType: DataType | 'UNSPECIFIED'): void {
+  // Skip type application for UNSPECIFIED columns - will be handled in Phase 2
+  if (dataType === 'UNSPECIFIED') {
+    return;
+  }
+  
   for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
     const cell = data[rowIndex]?.[colIndex];
-    if (cell && !cell.formula) {
+    if (cell) {
       cell.type = dataType;
-      // Convert the value based on the inferred type
-      cell.value = convertValueForType(cell.raw, dataType);
+      // Only convert the value for non-formula cells (formulas will be calculated later)
+      if (!cell.formula) {
+        cell.value = convertValueForType(cell.raw, dataType);
+      }
     }
   }
 }

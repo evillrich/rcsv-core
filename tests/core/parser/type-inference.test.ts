@@ -151,18 +151,19 @@ $300`;
     expect(result.sheets[0].metadata.columns[0].type).toBe('number');
   });
 
-  it('should skip formulas in type inference', () => {
+  it('should handle mixed formulas and values with Phase 1', () => {
     const rcsv = `Values
 123
-=A1+100
 456
-=SUM(A1:A3)`;
+789
+=A1+100`;
 
     const result = parseStructure(rcsv);
     
-    // Should infer based on non-formula values only
+    // 3 values, 1 formula = 25% formulas < 50% threshold
+    // Should infer based on non-formula values in Phase 1
     expect(result.sheets[0].metadata.columns[0].type).toBe('number');
     expect(result.sheets[0].data[0][0].value).toBe(123);
-    expect(result.sheets[0].data[2][0].value).toBe(456);
+    expect(result.sheets[0].data[1][0].value).toBe(456);
   });
 });

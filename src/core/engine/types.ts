@@ -32,7 +32,7 @@ export interface ChartMetadata {
 
 export interface ColumnMetadata {
   name: string;
-  type?: DataType;
+  type?: DataType | 'UNSPECIFIED';  // UNSPECIFIED = defer to post-calculation
   validationList?: string[]; // For category type
   formatting?: {
     align?: 'left' | 'center' | 'right';
@@ -88,6 +88,7 @@ export type ASTNode =
 export interface TypeInferenceConfig {
   sampleSize: number;           // Default: 100
   confidenceThreshold: number;  // Default: 0.8 (80%)
+  formulaThreshold: number;     // Default: 0.5 (50%) - if >=50% formulas, defer to post-calc
 }
 
 export interface ParserConfig {
@@ -137,7 +138,8 @@ export interface RangeRef {
 export const DEFAULT_CONFIG: RCSVConfig = {
   typeInference: {
     sampleSize: 100,
-    confidenceThreshold: 0.8
+    confidenceThreshold: 0.8,
+    formulaThreshold: 0.5
   },
   parser: {
     strict: false
