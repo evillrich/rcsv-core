@@ -227,54 +227,131 @@ function parseSheets(sheets: SheetRawData[]): Sheet[]
 
 ### 11. Type Inference Algorithm
 
-**Decision**: Sample-based inference with configurable parameters
+**Decision**: Two-phase inference with formula handling and configurable parameters
 
-**Algorithm**:
+**Approach**: **Two-Phase Type Inference**
+
+**Phase 1: Pre-calculation Inference**
+- Analyzes columns with explicit type annotations (e.g., `Sales:currency`)
+- Analyzes columns with low formula ratios (< 50% formulas by default)
+- Defers formula-heavy columns to Phase 2
+
+**Phase 2: Post-calculation Inference** 
+- Analyzes formula results after calculation engine runs
+- Handles columns that were marked as `UNSPECIFIED` in Phase 1
+- More accurate for formula-derived data
+
+**Configuration Interface**:
 ```typescript
 interface TypeInferenceConfig {
-  sampleSize: number;      // Default: 100 rows
-  confidenceThreshold: number; // Default: 0.8 (80%)
-}
-
-function inferColumnType(values: string[], config: TypeInferenceConfig): DataType {
-  const sample = values
-    .filter(v => v.trim() !== '') // Skip empty cells
-    .slice(0, config.sampleSize);
-  
-  if (sample.length === 0) return DataType.TEXT;
-  
-  const typeCounts = new Map<DataType, number>();
-  
-  // Count type matches for each value
-  sample.forEach(value => {
-    const inferredType = inferSingleValue(value);
-    typeCounts.set(inferredType, (typeCounts.get(inferredType) || 0) + 1);
-  });
-  
-  // Check if any type has required confidence
-  const threshold = Math.ceil(sample.length * config.confidenceThreshold);
-  
-  // Priority order: boolean > date > currency > percentage > number > text
-  const priorityOrder = [DataType.BOOLEAN, DataType.DATE, DataType.CURRENCY, 
-                        DataType.PERCENTAGE, DataType.NUMBER];
-  
-  for (const type of priorityOrder) {
-    if ((typeCounts.get(type) || 0) >= threshold) {
-      return type;
-    }
-  }
-  
-  return DataType.TEXT; // Conservative fallback
+  sampleSize: number;           // Default: 100 rows
+  confidenceThreshold: number;  // Default: 0.8 (80%)
+  formulaThreshold: number;     // Default: 0.5 (50%) - defer to Phase 2
 }
 ```
+
+**Phase 1 Algorithm**:
+```typescript
+function inferColumnTypes(data: CellValue[][], columns: ColumnMetadata[], config: TypeInferenceConfig): void {
+  for (let colIndex = 0; colIndex < columns.length; colIndex++) {
+    const column = columns[colIndex];
+    
+    // Skip columns with explicit type annotations
+    if (column.type && column.type !== 'UNSPECIFIED') {
+      applyTypeToColumn(data, colIndex, column.type);
+      continue;
+    }
+    
+    // Analyze formula vs value ratio
+    const sample = data.slice(0, config.sampleSize);
+    let valueCount = 0;
+    let formulaCount = 0;
+    const values: string[] = [];
+    
+    for (const row of sample) {
+      const cell = row[colIndex];
+      if (cell && cell.raw.trim() !== '') {
+        if (cell.formula) {
+          formulaCount++;
+        } else {
+          valueCount++;
+          values.push(cell.raw.trim());
+        }
+      }
+    }
+    
+    const totalCells = valueCount + formulaCount;
+    const formulaRatio = totalCells > 0 ? formulaCount / totalCells : 0;
+    
+    // If too many formulas, defer to Phase 2 (post-calculation)
+    if (formulaRatio >= config.formulaThreshold) {
+      column.type = 'UNSPECIFIED';
+      continue;
+    }
+    
+    // If not enough non-formula values, defer to Phase 2
+    if (values.length === 0) {
+      column.type = 'UNSPECIFIED';
+      continue;
+    }
+    
+    // Phase 1: Infer type from non-formula values
+    const inferredType = inferColumnType(values, config);
+    column.type = inferredType;
+    applyTypeToColumn(data, colIndex, inferredType);
+  }
+}
+```
+
+**Phase 2: Post-calculation Inference**
+```typescript
+// Phase 2 happens after formula calculation in the engine
+function finalizeColumnTypes(document: RCSVDocument): void {
+  document.sheets.forEach(sheet => {
+    sheet.metadata.columns.forEach((column, colIndex) => {
+      if (column.type === 'UNSPECIFIED') {
+        // Analyze calculated formula results
+        const calculatedValues = sheet.data.map(row => {
+          const cell = row[colIndex];
+          return cell?.value?.toString() || '';
+        }).filter(v => v.trim() !== '');
+        
+        // Apply same inference logic to calculated results
+        const inferredType = inferColumnType(calculatedValues, config);
+        column.type = inferredType;
+        
+        // Update all cells in this column with the final type
+        applyTypeToColumn(sheet.data, colIndex, inferredType);
+      }
+    });
+  });
+}
+```
+
+**UNSPECIFIED Type Handling**:
+- Temporary type assigned during Phase 1
+- Indicates "defer to post-calculation inference"
+- Never appears in final output - always resolved to concrete type
+- Allows formula results to influence type decisions
+
+**Why Two Phases?**
+1. **Performance**: Avoid re-inferring types for obvious cases
+2. **Accuracy**: Formula results provide better type signals than raw formulas
+3. **Flexibility**: Handle mixed data patterns (some formulas, some values)
+4. **Excel Compatibility**: Matches how Excel handles dynamic typing
 
 **Configuration Options**:
 - **Sample size**: 100 rows (default), configurable 50-500
 - **Confidence threshold**: 80% (default), configurable 70-95%
+- **Formula threshold**: 50% (default), configurable 0-90%
+  - If ≥50% of cells are formulas, defer to post-calculation inference
+  - Lower values = more aggressive Phase 1 inference
+  - Higher values = more deferred to Phase 2
 - **Priority handling**: More specific types beat general ones
 
 **Excel/Sheets Compatibility**:
 - Matches Excel's conservative approach
+- Handles formula-heavy columns like Excel's dynamic typing
 - Handles mixed data gracefully
 - Preserves leading zeros (ID columns stay text)
 
@@ -336,7 +413,8 @@ class RCSVError extends Error {
 interface RCSVConfig {
   typeInference: {
     sampleSize: number;           // Default: 100
-    confidenceThreshold: number;  // Default: 0.8
+    confidenceThreshold: number;  // Default: 0.8 (80%)
+    formulaThreshold: number;     // Default: 0.5 (50%)
   };
   parser: {
     strict: boolean;              // Default: false
@@ -346,7 +424,11 @@ interface RCSVConfig {
 
 // Usage
 const doc = parseRCSV(text, {
-  typeInference: { sampleSize: 50, confidenceThreshold: 0.7 },
+  typeInference: { 
+    sampleSize: 50, 
+    confidenceThreshold: 0.7,
+    formulaThreshold: 0.3  // More aggressive Phase 1 inference
+  },
   parser: { strict: true }
 });
 ```
