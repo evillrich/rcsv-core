@@ -15,20 +15,58 @@ export function calculate(doc: RCSVDocument): RCSVDocument {
   // Create a copy to avoid modifying the original
   const calculatedDoc = JSON.parse(JSON.stringify(doc));
   
-  // Calculate formulas in each sheet
-  for (const sheet of calculatedDoc.sheets) {
-    calculateSheet(sheet);
-  }
+  // Use DocumentCalculator for multi-sheet support
+  const calculator = new DocumentCalculator(calculatedDoc);
+  calculator.calculateAll();
   
   return calculatedDoc;
 }
 
 /**
- * Calculate all formulas in a sheet
+ * Document-level calculator with multi-sheet support
  */
-function calculateSheet(sheet: Sheet): void {
-  const calculator = new SheetCalculator(sheet);
-  calculator.calculateAll();
+class DocumentCalculator {
+  private sheetCalculators = new Map<string, SheetCalculator>();
+  
+  constructor(doc: RCSVDocument) {
+    
+    // Create a calculator for each sheet
+    for (const sheet of doc.sheets) {
+      this.sheetCalculators.set(sheet.name, new SheetCalculator(sheet, this));
+    }
+  }
+  
+  /**
+   * Calculate all formulas across all sheets
+   */
+  calculateAll(): void {
+    // Calculate each sheet
+    for (const calculator of this.sheetCalculators.values()) {
+      calculator.calculateAll();
+    }
+  }
+  
+  /**
+   * Get a value from a specific sheet
+   */
+  getSheetCellValue(sheetName: string, cellRef: string): any {
+    const calculator = this.sheetCalculators.get(sheetName);
+    if (!calculator) {
+      throw new Error(`Sheet not found: ${sheetName}`);
+    }
+    return calculator.getCellValue(cellRef);
+  }
+  
+  /**
+   * Get range values from a specific sheet
+   */
+  getSheetRangeValues(sheetName: string, startRef: string, endRef: string): any[] {
+    const calculator = this.sheetCalculators.get(sheetName);
+    if (!calculator) {
+      throw new Error(`Sheet not found: ${sheetName}`);
+    }
+    return calculator.getRangeValues(startRef, endRef);
+  }
 }
 
 /**
@@ -36,12 +74,14 @@ function calculateSheet(sheet: Sheet): void {
  */
 class SheetCalculator {
   private sheet: Sheet;
+  private documentCalc: DocumentCalculator;
   private dependencies = new Map<string, Set<string>>();
   private calculated = new Set<string>();
   private calculating = new Set<string>();
   
-  constructor(sheet: Sheet) {
+  constructor(sheet: Sheet, documentCalc: DocumentCalculator) {
     this.sheet = sheet;
+    this.documentCalc = documentCalc;
     this.buildDependencyGraph();
   }
   
@@ -84,7 +124,7 @@ class SheetCalculator {
     const dependencies = new Set<string>();
     
     try {
-      const ast = parseFormula(formula);
+      const ast = parseFormula(formula, {});
       this.collectDependencies(ast, dependencies);
     } catch (error) {
       // If formula parsing fails, assume no dependencies
@@ -155,7 +195,7 @@ class SheetCalculator {
       }
       
       // Parse and evaluate the formula
-      const ast = parseFormula(cell.formula);
+      const ast = parseFormula(cell.formula, {});
       const result = this.evaluateAST(ast);
       
       // Store the calculated value
@@ -198,8 +238,18 @@ class SheetCalculator {
         }
         return cellValue;
       
+      case 'sheet_cell':
+        const sheetCellValue = this.documentCalc.getSheetCellValue(node.sheet, node.ref);
+        if (typeof sheetCellValue === 'string' && sheetCellValue.startsWith('#')) {
+          throw new Error(`Reference error: ${sheetCellValue}`);
+        }
+        return sheetCellValue;
+      
       case 'range':
         return this.getRangeValues(node.start, node.end);
+      
+      case 'sheet_range':
+        return this.documentCalc.getSheetRangeValues(node.sheet, node.start, node.end);
       
       case 'binary':
         return this.evaluateBinaryOp(node.op, node.left, node.right);
@@ -400,12 +450,12 @@ class SheetCalculator {
     }
   }
   
-  private getCellValue(ref: string): any {
+  getCellValue(ref: string): any {
     const cell = this.getCellByRef(ref);
     return cell?.value ?? 0;
   }
   
-  private getRangeValues(start: string, end: string): any[] {
+  getRangeValues(start: string, end: string): any[] {
     const range = this.expandRange(start, end);
     return range.map(ref => this.getCellValue(ref));
   }

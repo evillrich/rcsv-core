@@ -15,34 +15,45 @@ import type { RCSVDocument, DocumentMetadata, ChartMetadata, CellValue, ColumnMe
 export function parseStructure(text: string): RCSVDocument {
   const lines = text.split(/\r?\n/);
   
-  // Extract document metadata and chart definitions
-  const { metadata, charts, dataStartLine } = extractMetadata(lines);
+  // Extract document-level metadata (## comments before first sheet)
+  const { metadata: docMetadata, firstSheetLine } = extractDocumentMetadata(lines);
   
-  // Extract CSV data (everything after metadata comments)
-  const csvData = lines.slice(dataStartLine).join('\n');
+  // Split into sheets by "# Sheet:" boundaries
+  const sheetSections = splitIntoSheets(lines.slice(firstSheetLine));
   
-  // Parse CSV with PapaParse
-  const { data, columns } = parseCSVData(csvData);
-  
-  // Calculate memory stats
-  const estimatedRows = data.length;
-  const estimatedMemoryMB = Math.round((estimatedRows * columns.length * 50) / (1024 * 1024) * 100) / 100;
-  
-  // For POC: single sheet only
-  const sheets = [{
-    name: 'Sheet1',
-    metadata: {
+  // Parse each sheet
+  const sheets = sheetSections.map((section, index) => {
+    const { name, lines: sheetLines } = section;
+    
+    // Extract sheet-level metadata and charts
+    const { charts, dataStartLine } = extractSheetMetadata(sheetLines);
+    
+    // Extract CSV data (everything after metadata comments)
+    const csvData = sheetLines.slice(dataStartLine).join('\n');
+    
+    // Parse CSV with PapaParse
+    const { data, columns } = parseCSVData(csvData);
+    
+    return {
+      name: name || `Sheet${index + 1}`,
+      metadata: {
+        charts,
+        columns
+      },
+      data,
       charts,
-      columns
-    },
-    data,
-    charts,
-    rowCount: estimatedRows,
-    columnCount: columns.length
-  }];
+      rowCount: data.length,
+      columnCount: columns.length
+    };
+  });
+  
+  // Calculate total memory stats
+  const estimatedRows = sheets.reduce((sum, sheet) => sum + sheet.rowCount, 0);
+  const estimatedColumns = Math.max(...sheets.map(s => s.columnCount));
+  const estimatedMemoryMB = Math.round((estimatedRows * estimatedColumns * 50) / (1024 * 1024) * 100) / 100;
   
   return {
-    metadata,
+    metadata: docMetadata,
     sheets,
     version: '1.0',
     memoryStats: {
@@ -53,14 +64,109 @@ export function parseStructure(text: string): RCSVDocument {
 }
 
 /**
- * Extract metadata and chart definitions from ## comments
+ * Extract document-level metadata (before first sheet)
  */
-function extractMetadata(lines: string[]): {
+function extractDocumentMetadata(lines: string[]): {
   metadata: DocumentMetadata;
+  firstSheetLine: number;
+} {
+  const metadata: DocumentMetadata = {};
+  let firstSheetLine = 0;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines
+    if (!line) continue;
+    
+    // Check for sheet declaration
+    if (line.startsWith('# Sheet:')) {
+      firstSheetLine = i;
+      break;
+    }
+    
+    // Check for document metadata (# comments before sheets)
+    if (line.startsWith('#') && !line.startsWith('##')) {
+      const comment = line.substring(1).trim();
+      // Parse document metadata in key: value format
+      const match = comment.match(/^(\w+):\s*(.+)$/);
+      if (match) {
+        const [, key, value] = match;
+        metadata[key.toLowerCase()] = value.trim();
+      }
+    }
+    
+    // Skip data lines that aren't metadata
+    if (!line.startsWith('#')) {
+      // No sheet declaration found, treat as single sheet
+      firstSheetLine = 0;
+      break;
+    }
+  }
+  
+  return { metadata, firstSheetLine };
+}
+
+/**
+ * Split lines into sheet sections by "# Sheet:" boundaries
+ */
+function splitIntoSheets(lines: string[]): Array<{ name: string | null; lines: string[] }> {
+  const sheets: Array<{ name: string | null; lines: string[] }> = [];
+  let currentSheet: { name: string | null; lines: string[] } | null = null;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    // Check for sheet declaration
+    if (trimmed.startsWith('# Sheet:')) {
+      // Save previous sheet if exists
+      if (currentSheet && currentSheet.lines.some(l => l.trim() !== '')) {
+        sheets.push(currentSheet);
+      }
+      
+      // Start new sheet
+      const sheetName = trimmed.substring(8).trim();
+      currentSheet = {
+        name: sheetName || null,
+        lines: []
+      };
+    } else {
+      // Add line to current sheet
+      if (!currentSheet) {
+        // No sheet declaration yet, create default sheet
+        currentSheet = {
+          name: null,
+          lines: []
+        };
+      }
+      currentSheet.lines.push(line);
+    }
+  }
+  
+  // Add the last sheet
+  if (currentSheet && currentSheet.lines.some(l => l.trim() !== '')) {
+    sheets.push(currentSheet);
+  }
+  
+  // If no sheets found, treat entire content as single sheet
+  if (sheets.length === 0) {
+    sheets.push({
+      name: null,
+      lines: lines
+    });
+  }
+  
+  return sheets;
+}
+
+/**
+ * Extract sheet-level metadata and chart definitions from ## comments
+ */
+function extractSheetMetadata(lines: string[]): {
   charts: ChartMetadata[];
   dataStartLine: number;
 } {
-  const metadata: DocumentMetadata = {};
   const charts: ChartMetadata[] = [];
   let dataStartLine = 0;
   
@@ -80,18 +186,15 @@ function extractMetadata(lines: string[]): {
         if (chart) {
           charts.push(chart);
         }
-      } else {
-        // Parse general metadata (key=value format)
-        parseGeneralMetadata(comment, metadata);
       }
-    } else {
+    } else if (!line.startsWith('#')) {
       // First non-comment line is start of data
       dataStartLine = i;
       break;
     }
   }
   
-  return { metadata, charts, dataStartLine };
+  return { charts, dataStartLine };
 }
 
 /**
@@ -107,36 +210,36 @@ function parseChartMetadata(comment: string, lineNumber: number): ChartMetadata 
     const pairs = parseKeyValuePairs(chartDef);
     
     for (const [key, value] of pairs) {
-      const cleanValue = value.replace(/^["']|["']$/g, '');
-      
       switch (key.toLowerCase()) {
         case 'type':
-          if (['bar', 'column', 'line', 'pie', 'scatter'].includes(cleanValue)) {
-            chart.type = cleanValue as ChartMetadata['type'];
+          const typeValue = value.replace(/^["']|["']$/g, '');
+          if (['bar', 'column', 'line', 'pie', 'scatter'].includes(typeValue)) {
+            chart.type = typeValue as ChartMetadata['type'];
           }
           break;
         case 'title':
-          chart.title = cleanValue;
+          // Remove quotes only if they wrap the entire value
+          chart.title = value.replace(/^["']|["']$/g, '');
           break;
         case 'x':
-          chart.x = cleanValue;
+          // Single column reference - remove quotes if present
+          chart.x = value.replace(/^["']|["']$/g, '');
           break;
         case 'y':
-          // Handle multiple y values
-          if (cleanValue.includes(',')) {
-            chart.y = cleanValue.split(',').map(s => s.trim());
-          } else {
-            chart.y = cleanValue;
-          }
+          // Handle multiple y values with proper quote parsing
+          chart.y = parseCommaSeparatedValues(value);
           break;
         case 'series':
-          chart.series = cleanValue.split(',').map(s => s.trim());
+          // Handle multiple series values with proper quote parsing  
+          chart.series = parseCommaSeparatedValues(value);
           break;
         case 'values':
-          chart.values = cleanValue;
+          // Single column reference for pie charts
+          chart.values = value.replace(/^["']|["']$/g, '');
           break;
         case 'labels':
-          chart.labels = cleanValue;
+          // Single column reference for pie charts
+          chart.labels = value.replace(/^["']|["']$/g, '');
           break;
       }
     }
@@ -155,42 +258,119 @@ function parseChartMetadata(comment: string, lineNumber: number): ChartMetadata 
 }
 
 /**
- * Parse key=value pairs, handling commas within values
+ * Parse comma-separated values that may contain quoted items
+ * Examples:
+ * - "Revenue,Expenses" -> ["Revenue", "Expenses"]
+ * - '"Revenue, After Tax",Expenses' -> ["Revenue, After Tax", "Expenses"]
+ * - 'Revenue' -> "Revenue" (single value)
+ */
+function parseCommaSeparatedValues(value: string): string | string[] {
+  if (!value.includes(',')) {
+    // Single value - just remove surrounding quotes if present
+    return value.replace(/^["']|["']$/g, '');
+  }
+  
+  const items: string[] = [];
+  let current = '';
+  let inQuote = false;
+  let quoteChar = '';
+  
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i];
+    
+    if (!inQuote) {
+      if ((char === '"' || char === "'") && (current === '' || current.match(/^\s*$/))) {
+        // Starting a quoted value
+        inQuote = true;
+        quoteChar = char;
+      } else if (char === ',') {
+        // End of current item
+        items.push(current.trim().replace(/^["']|["']$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    } else {
+      // Inside quotes
+      if (char === quoteChar && (i === value.length - 1 || value[i + 1] === ',' || value[i + 1] === ' ')) {
+        // Ending quote
+        inQuote = false;
+        quoteChar = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+  
+  // Add the last item
+  if (current) {
+    items.push(current.trim().replace(/^["']|["']$/g, ''));
+  }
+  
+  // Return single item as string, multiple as array
+  return items.length === 1 ? items[0] : items;
+}
+
+/**
+ * Parse key=value pairs, handling quoted values and commas
+ * Supports:
+ * - Simple values: x=Month
+ * - Quoted values: title="Q4 Report, Final"
+ * - Comma-separated lists: y=Revenue,Expenses,Profit
+ * - Mixed quoted/unquoted lists: y="Revenue, After Tax",Expenses,"Profit, Net"
  */
 function parseKeyValuePairs(input: string): [string, string][] {
   const pairs: [string, string][] = [];
   let currentKey = '';
   let currentValue = '';
   let inValue = false;
+  let inQuote = false;
   let quoteChar = '';
   
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
+    const nextChar = input[i + 1] || '';
     
     if (!inValue) {
       // Looking for key=value
       if (char === '=') {
         inValue = true;
         currentKey = currentKey.trim();
+      } else if (char === ' ' || char === ',') {
+        // Skip whitespace and commas between pairs
+        if (currentKey.trim()) {
+          currentKey += char;
+        }
       } else {
         currentKey += char;
       }
     } else {
       // Building value
-      if ((char === '"' || char === "'") && currentValue === '') {
-        // Starting quoted value
-        quoteChar = char;
-      } else if (char === quoteChar && quoteChar !== '') {
-        // Ending quoted value
-        quoteChar = '';
-      } else if (char === ',' && quoteChar === '') {
-        // End of this key=value pair
-        pairs.push([currentKey, currentValue.trim()]);
-        currentKey = '';
-        currentValue = '';
-        inValue = false;
+      if (!inQuote) {
+        if ((char === '"' || char === "'") && (currentValue === '' || currentValue.endsWith(','))) {
+          // Starting a quoted section
+          inQuote = true;
+          quoteChar = char;
+          currentValue += char;
+        } else if (char === ',' && nextChar.match(/\s*\w+\s*=/)) {
+          // This comma separates key=value pairs (next item is a key)
+          pairs.push([currentKey, currentValue.trim()]);
+          currentKey = '';
+          currentValue = '';
+          inValue = false;
+        } else {
+          currentValue += char;
+        }
       } else {
+        // Inside quotes
         currentValue += char;
+        if (char === quoteChar) {
+          // Check if this closes the quote (not escaped)
+          if (i === 0 || input[i - 1] !== '\\') {
+            inQuote = false;
+            quoteChar = '';
+          }
+        }
       }
     }
   }
@@ -203,18 +383,6 @@ function parseKeyValuePairs(input: string): [string, string][] {
   return pairs;
 }
 
-/**
- * Parse general metadata in key=value format
- */
-function parseGeneralMetadata(comment: string, metadata: DocumentMetadata): void {
-  // Look for key=value pattern
-  const match = comment.match(/^(\w+)\s*=\s*(.+)$/);
-  if (match) {
-    const [, key, value] = match;
-    // Remove quotes if present
-    metadata[key.toLowerCase()] = value.replace(/^["']|["']$/g, '');
-  }
-}
 
 /**
  * Parse CSV data using PapaParse and create cell value matrix

@@ -411,7 +411,45 @@ class RCSVMemoryError extends Error {
 - **Aligns with "good enough"** - Handle typical business scenarios
 - **User-driven optimization** - Don't optimize for problems we don't have yet
 
-### 18. API Design
+### 18. Metadata Escaping Design
+
+**Decision**: Quote-based escaping similar to CSV
+
+**Implementation**:
+```typescript
+// Parse key=value pairs with proper quote handling
+function parseKeyValuePairs(input: string): [string, string][]
+
+// Parse comma-separated values that may contain quoted items  
+function parseCommaSeparatedValues(value: string): string | string[]
+```
+
+**Escaping Rules**:
+1. **Simple values**: No quotes needed for basic values
+   - `x=Month`, `type=bar`
+2. **Special characters**: Quote values containing commas or equals
+   - `title="Q4 Report, Final"`
+3. **Multiple values**: Comma-separated lists with optional quoting
+   - `y=Revenue,Expenses,Profit`
+   - `y="Revenue, After Tax",Expenses,"Profit, Net"`
+4. **Quote escaping**: Use backslash within quoted strings
+   - `title="Sales Report \"2024\""`
+
+**Rationale**:
+- **CSV consistency**: Matches existing CSV escaping conventions users know
+- **Familiar syntax**: Same as spreadsheet software formulas
+- **Flexible parsing**: Handles both simple and complex column names
+- **Backward compatible**: Simple cases work without quotes
+- **Clear rules**: Easy to document and understand
+
+**Examples**:
+```csv
+## Chart: type=bar, x=Month, y=Sales
+## Chart: type=line, title="Q4 Report, Final", x=Month, y=Revenue,Expenses
+## Chart: type=pie, title="John's Report", labels="Category, Type", values=Amount
+```
+
+### 19. API Design
 
 **POC Public API**:
 ```typescript

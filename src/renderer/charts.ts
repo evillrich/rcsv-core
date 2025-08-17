@@ -34,11 +34,49 @@ export function renderChart(chart: ChartMetadata, sheet: Sheet): HTMLCanvasEleme
  * Extract data from sheet based on chart metadata
  */
 function extractChartData(chart: ChartMetadata, sheet: Sheet) {
-  // Find column indices
-  const xIndex = sheet.metadata.columns.findIndex(col => col.name === chart.x);
-  const yIndices = Array.isArray(chart.y) 
-    ? chart.y.map(name => sheet.metadata.columns.findIndex(col => col.name === name))
-    : [sheet.metadata.columns.findIndex(col => col.name === chart.y)];
+  // Handle pie charts differently - they use 'labels' and 'values'
+  if (chart.type === 'pie') {
+    const labelsIndex = sheet.metadata.columns.findIndex(col => col.name === chart.labels);
+    const valuesIndex = sheet.metadata.columns.findIndex(col => col.name === chart.values);
+    
+    if (labelsIndex === -1 || valuesIndex === -1) {
+      console.warn('Pie chart missing labels or values column', { chart, columns: sheet.metadata.columns });
+      return { labels: [], datasets: [] };
+    }
+    
+    const labels = sheet.data.map(row => {
+      const cell = row[labelsIndex];
+      return formatLabel(cell);
+    });
+    
+    const data = sheet.data.map(row => {
+      const cell = row[valuesIndex];
+      return extractNumericValue(cell);
+    });
+    
+    const datasets = [{
+      label: chart.values || 'Values',
+      data,
+      backgroundColor: data.map((_, sliceIndex) => getColor(sliceIndex, 0.7)),
+      borderColor: data.map((_, sliceIndex) => getColor(sliceIndex, 1)),
+      borderWidth: 1
+    }];
+    
+    return { labels, datasets };
+  }
+  
+  // For non-pie charts, use x and y columns
+  const xIndex = chart.x ? sheet.metadata.columns.findIndex(col => col.name === chart.x) : -1;
+  const yIndices = chart.y 
+    ? (Array.isArray(chart.y) 
+      ? chart.y.map(name => sheet.metadata.columns.findIndex(col => col.name === name))
+      : [sheet.metadata.columns.findIndex(col => col.name === chart.y)])
+    : [];
+  
+  if (xIndex === -1 || yIndices.some(idx => idx === -1)) {
+    console.warn('Chart missing x or y columns', { chart, columns: sheet.metadata.columns });
+    return { labels: [], datasets: [] };
+  }
   
   // Extract labels from x column
   const labels = sheet.data.map(row => {
@@ -54,18 +92,11 @@ function extractChartData(chart: ChartMetadata, sheet: Sheet) {
       return extractNumericValue(cell);
     });
     
-    // For pie charts, each slice needs a different color
-    const isPieChart = chart.type === 'pie';
-    
     return {
       label: columnName || `Series ${i + 1}`,
       data,
-      backgroundColor: isPieChart 
-        ? data.map((_, sliceIndex) => getColor(sliceIndex, 0.7))
-        : getColor(i, 0.5),
-      borderColor: isPieChart
-        ? data.map((_, sliceIndex) => getColor(sliceIndex, 1))
-        : getColor(i, 1),
+      backgroundColor: getColor(i, 0.5),
+      borderColor: getColor(i, 1),
       borderWidth: 1
     };
   });

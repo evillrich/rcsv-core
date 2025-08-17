@@ -77,7 +77,9 @@ export type ASTNode =
   | { type: 'string'; value: string }
   | { type: 'boolean'; value: boolean }
   | { type: 'cell'; ref: string }
+  | { type: 'sheet_cell'; sheet: string; ref: string }
   | { type: 'range'; start: string; end: string }
+  | { type: 'sheet_range'; sheet: string; start: string; end: string }
   | { type: 'function'; name: string; args: ASTNode[] }
   | { type: 'binary'; op: '+' | '-' | '*' | '/' | '^'; left: ASTNode; right: ASTNode }
   | { type: 'unary'; op: '-' | '+'; operand: ASTNode };

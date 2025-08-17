@@ -1,5 +1,5 @@
 // RCSV Formula Grammar for Peggy
-// Supports: numbers, cell references, ranges, SUM function, basic math operators
+// Supports: numbers, cell references, ranges, SUM function, basic math operators, cross-sheet references
 
 {
   // Helper function to create AST nodes
@@ -14,9 +14,21 @@
     return createNode('cell', { ref });
   }
   
+  // Helper to parse sheet-qualified cell references like Sheet1!A1
+  function parseSheetCellRef(sheet, ref) {
+    const match = ref.match(/^([A-Z]+)(\d+)$/);
+    if (!match) throw new Error(`Invalid cell reference: ${ref}`);
+    return createNode('sheet_cell', { sheet, ref });
+  }
+  
   // Helper to create range references
   function createRange(start, end) {
     return createNode('range', { start, end });
+  }
+  
+  // Helper to create sheet-qualified range references
+  function createSheetRange(sheet, start, end) {
+    return createNode('sheet_range', { sheet, start, end });
   }
 }
 
@@ -68,6 +80,7 @@ UnaryExpression
 
 PrimaryExpression
   = FunctionCall
+  / SheetReference
   / Range
   / CellReference
   / Number
@@ -92,6 +105,18 @@ ArgumentList
   = first:Expression rest:("," Expression)* {
     return [first].concat(rest.map(r => r[1]));
   }
+
+SheetReference
+  = sheet:SheetName "!" range:Range {
+    return createSheetRange(sheet, range.start, range.end);
+  }
+  / sheet:SheetName "!" ref:$([A-Z]+ [0-9]+) {
+    return parseSheetCellRef(sheet, ref);
+  }
+
+SheetName
+  = "'" name:$([^']+) "'" { return name.replace(/''/g, "'"); }
+  / name:$([A-Za-z_][A-Za-z0-9_]*) { return name; }
 
 Range
   = start:CellReference ":" end:CellReference {
