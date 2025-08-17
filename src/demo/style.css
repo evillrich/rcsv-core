@@ -84,39 +84,155 @@ button:hover {
   background: #1d4ed8;
 }
 
+/* RCSV Renderer Styles */
+.rcsv-title {
+  color: #111827;
+  font-size: 1.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.rcsv-author {
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 1.5rem;
+}
+
+.rcsv-sheet {
+  margin-bottom: 2rem;
+}
+
+.rcsv-sheet-title {
+  color: #374151;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
 /* RCSV Table Styles */
+.rcsv-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
 .rcsv-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0;
+  font-size: 14px;
+}
+
+.rcsv-table thead {
+  background: var(--bg-color);
+  position: sticky;
+  top: 0;
 }
 
 .rcsv-table th,
 .rcsv-table td {
-  padding: 0.5rem;
+  padding: 0.625rem;
   border: 1px solid var(--border-color);
   text-align: left;
 }
 
 .rcsv-table th {
-  background: var(--bg-color);
+  font-weight: 600;
+  color: #374151;
+}
+
+.rcsv-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Cell Type Alignment */
+.rcsv-align-right {
+  text-align: right !important;
+}
+
+.rcsv-align-center {
+  text-align: center !important;
+}
+
+/* Cell Type Colors */
+.rcsv-type-currency {
+  color: #059669;
+  font-family: 'Courier New', monospace;
+}
+
+.rcsv-type-percentage {
+  color: #7c3aed;
+}
+
+.rcsv-type-number {
+  color: #0891b2;
+  font-family: 'Courier New', monospace;
+}
+
+.rcsv-type-boolean {
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.rcsv-type-date {
+  color: #ea580c;
+}
+
+/* Formula Indicators */
+.rcsv-has-formula {
+  background: #fef3c7;
+  position: relative;
+}
+
+.rcsv-has-formula::after {
+  content: 'ƒ';
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.rcsv-error {
+  background: #fee2e2 !important;
+  color: var(--error-color) !important;
   font-weight: 600;
 }
 
-.rcsv-table td.number,
-.rcsv-table td.currency {
-  text-align: right;
+/* Chart Styles */
+.rcsv-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-.rcsv-table td.center {
+.rcsv-chart-wrapper {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  min-height: 300px;
+}
+
+.rcsv-chart {
+  max-width: 100%;
+  height: auto !important;
+}
+
+.rcsv-chart-error {
+  color: var(--error-color);
+  padding: 1rem;
   text-align: center;
 }
 
-/* Chart Styles */
-.rcsv-chart {
-  max-width: 100%;
-  height: 400px;
-  margin: 1rem 0;
+/* Stats Footer */
+.rcsv-stats {
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
 
 /* Error Styles */

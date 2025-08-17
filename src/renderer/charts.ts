@@ -2,7 +2,11 @@
  * Chart Renderer for RCSV using Chart.js
  */
 
-import type { ChartMetadata, Sheet } from '../core/engine/types';
+import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import type { ChartMetadata, Sheet, CellValue } from '../core/engine/types';
+
+// Register all Chart.js components
+Chart.register(...registerables);
 
 /**
  * Render a chart from metadata
@@ -10,15 +14,162 @@ import type { ChartMetadata, Sheet } from '../core/engine/types';
  * @param sheet - Sheet containing the data
  * @returns Canvas element with rendered chart
  */
-export function renderChart(_chart: ChartMetadata, _sheet: Sheet): HTMLCanvasElement {
+export function renderChart(chart: ChartMetadata, sheet: Sheet): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.className = 'rcsv-chart';
   
-  // TODO: Implement Chart.js rendering
-  // 1. Extract data based on x/y columns
-  // 2. Map RCSV chart type to Chart.js config
-  // 3. Create Chart.js instance
-  // 4. Handle multi-series charts
+  // Extract data based on x/y columns
+  const { labels, datasets } = extractChartData(chart, sheet);
+  
+  // Map RCSV chart type to Chart.js config
+  const config = createChartConfig(chart, labels, datasets);
+  
+  // Create Chart.js instance
+  new Chart(canvas, config);
   
   return canvas;
+}
+
+/**
+ * Extract data from sheet based on chart metadata
+ */
+function extractChartData(chart: ChartMetadata, sheet: Sheet) {
+  // Find column indices
+  const xIndex = sheet.metadata.columns.findIndex(col => col.name === chart.x);
+  const yIndices = Array.isArray(chart.y) 
+    ? chart.y.map(name => sheet.metadata.columns.findIndex(col => col.name === name))
+    : [sheet.metadata.columns.findIndex(col => col.name === chart.y)];
+  
+  // Extract labels from x column
+  const labels = sheet.data.map(row => {
+    const cell = row[xIndex];
+    return formatLabel(cell);
+  });
+  
+  // Extract datasets from y columns
+  const datasets = yIndices.map((yIndex, i) => {
+    const columnName = Array.isArray(chart.y) ? chart.y[i] : chart.y;
+    const data = sheet.data.map(row => {
+      const cell = row[yIndex];
+      return extractNumericValue(cell);
+    });
+    
+    // For pie charts, each slice needs a different color
+    const isPieChart = chart.type === 'pie';
+    
+    return {
+      label: columnName || `Series ${i + 1}`,
+      data,
+      backgroundColor: isPieChart 
+        ? data.map((_, sliceIndex) => getColor(sliceIndex, 0.7))
+        : getColor(i, 0.5),
+      borderColor: isPieChart
+        ? data.map((_, sliceIndex) => getColor(sliceIndex, 1))
+        : getColor(i, 1),
+      borderWidth: 1
+    };
+  });
+  
+  return { labels, datasets };
+}
+
+/**
+ * Create Chart.js configuration from RCSV metadata
+ */
+function createChartConfig(
+  chart: ChartMetadata, 
+  labels: string[], 
+  datasets: any[]
+): ChartConfiguration {
+  // Map RCSV chart type to Chart.js type
+  const chartType = mapChartType(chart.type);
+  
+  return {
+    type: chartType,
+    data: {
+      labels,
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: !!chart.title,
+          text: chart.title || ''
+        },
+        legend: {
+          display: datasets.length > 1
+        }
+      },
+      scales: chartType === 'pie' ? {} : {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  };
+}
+
+/**
+ * Map RCSV chart type to Chart.js type
+ */
+function mapChartType(type: ChartMetadata['type']): ChartConfiguration['type'] {
+  switch (type) {
+    case 'bar':
+      return 'bar';
+    case 'column':
+      return 'bar'; // Chart.js uses 'bar' for both
+    case 'line':
+      return 'line';
+    case 'pie':
+      return 'pie';
+    case 'scatter':
+      return 'scatter';
+    default:
+      return 'bar';
+  }
+}
+
+/**
+ * Format a cell value as a label
+ */
+function formatLabel(cell: CellValue): string {
+  if (cell.value === null || cell.value === undefined) {
+    return '';
+  }
+  
+  if (cell.value instanceof Date) {
+    return cell.value.toLocaleDateString();
+  }
+  
+  return String(cell.value);
+}
+
+/**
+ * Extract numeric value from cell
+ */
+function extractNumericValue(cell: CellValue): number | null {
+  if (cell.value === null || cell.value === undefined || cell.value === '') {
+    return null;
+  }
+  
+  const num = Number(cell.value);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Get a color from a palette
+ */
+function getColor(index: number, alpha: number = 1): string {
+  const colors = [
+    `rgba(54, 162, 235, ${alpha})`,  // Blue
+    `rgba(255, 99, 132, ${alpha})`,  // Red
+    `rgba(75, 192, 192, ${alpha})`,  // Teal
+    `rgba(255, 206, 86, ${alpha})`,  // Yellow
+    `rgba(153, 102, 255, ${alpha})`, // Purple
+    `rgba(255, 159, 64, ${alpha})`,  // Orange
+  ];
+  
+  return colors[index % colors.length];
 }

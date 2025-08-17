@@ -6,7 +6,7 @@ describe('Calculator Engine', () => {
   describe('Basic Arithmetic', () => {
     it('should calculate simple addition', () => {
       const rcsv = `A:number,B:number,Total:number
-10,20,=A1+B1`;
+10,20,=A2+B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -17,7 +17,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate subtraction', () => {
       const rcsv = `A:number,B:number,Result:number
-50,30,=A1-B1`;
+50,30,=A2-B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -27,7 +27,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate multiplication', () => {
       const rcsv = `A:number,B:number,Result:number
-6,7,=A1*B1`;
+6,7,=A2*B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -37,7 +37,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate division', () => {
       const rcsv = `A:number,B:number,Result:number
-84,12,=A1/B1`;
+84,12,=A2/B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -47,7 +47,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate power operations', () => {
       const rcsv = `A:number,B:number,Result:number
-2,3,=A1^B1`;
+2,3,=A2^B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -59,7 +59,7 @@ describe('Calculator Engine', () => {
   describe('Complex Expressions', () => {
     it('should handle operator precedence', () => {
       const rcsv = `A:number,B:number,C:number,Result:number
-2,3,4,=A1+B1*C1`;
+2,3,4,=A2+B2*C2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -69,7 +69,7 @@ describe('Calculator Engine', () => {
 
     it('should handle parentheses', () => {
       const rcsv = `A:number,B:number,C:number,Result:number
-2,3,4,=(A1+B1)*C1`;
+2,3,4,=(A2+B2)*C2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -79,7 +79,7 @@ describe('Calculator Engine', () => {
 
     it('should handle negative numbers', () => {
       const rcsv = `A:number,Result:number
-10,=-A1`;
+10,=-A2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -91,7 +91,7 @@ describe('Calculator Engine', () => {
   describe('SUM Function', () => {
     it('should calculate SUM with individual cells', () => {
       const rcsv = `A:number,B:number,C:number,Total:number
-10,20,30,"=SUM(A1,B1,C1)"`;
+10,20,30,"=SUM(A2,B2,C2)"`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -101,7 +101,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate SUM with range', () => {
       const rcsv = `Values:number,Total:number
-10,=SUM(A1:A3)
+10,=SUM(A2:A4)
 20,
 30,`;
       
@@ -113,7 +113,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate SUM with mixed arguments', () => {
       const rcsv = `A:number,B:number,C:number,Total:number
-10,20,30,"=SUM(A1:B1,C1)"`;
+10,20,30,"=SUM(A2:B2,C2)"`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -125,7 +125,7 @@ describe('Calculator Engine', () => {
   describe('Other Functions', () => {
     it('should calculate AVERAGE', () => {
       const rcsv = `Values:number,Average:number
-10,=AVERAGE(A1:A3)
+10,=AVERAGE(A2:A4)
 20,
 30,`;
       
@@ -137,7 +137,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate COUNT', () => {
       const rcsv = `Values:number,Count:number
-10,=COUNT(A1:A3)
+10,=COUNT(A2:A4)
 20,
 30,`;
       
@@ -149,7 +149,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate MIN', () => {
       const rcsv = `Values:number,Min:number
-30,=MIN(A1:A3)
+30,=MIN(A2:A4)
 10,
 20,`;
       
@@ -161,7 +161,7 @@ describe('Calculator Engine', () => {
 
     it('should calculate MAX', () => {
       const rcsv = `Values:number,Max:number
-10,=MAX(A1:A3)
+10,=MAX(A2:A4)
 30,
 20,`;
       
@@ -175,37 +175,37 @@ describe('Calculator Engine', () => {
   describe('Dependencies', () => {
     it('should resolve simple dependencies', () => {
       const rcsv = `A:number,B:number,C:number
-10,=A1*2,=B1+5`;
+10,=A2*2,=B2+5`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
       
-      expect(result.sheets[0].data[0][1].value).toBe(20);  // A1 * 2 = 20
-      expect(result.sheets[0].data[0][2].value).toBe(25);  // B1 + 5 = 25
+      expect(result.sheets[0].data[0][1].value).toBe(20);  // A2 * 2 = 20
+      expect(result.sheets[0].data[0][2].value).toBe(25);  // B2 + 5 = 25
     });
 
     it('should resolve complex dependencies', () => {
       const rcsv = `A:number,B:number,C:number,D:number
-10,=A1+5,=B1*2,=C1+A1`;
+10,=A2+5,=B2*2,=C2+A2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
       
-      expect(result.sheets[0].data[0][1].value).toBe(15);  // A1 + 5 = 15
-      expect(result.sheets[0].data[0][2].value).toBe(30);  // B1 * 2 = 30
-      expect(result.sheets[0].data[0][3].value).toBe(40);  // C1 + A1 = 40
+      expect(result.sheets[0].data[0][1].value).toBe(15);  // A2 + 5 = 15
+      expect(result.sheets[0].data[0][2].value).toBe(30);  // B2 * 2 = 30
+      expect(result.sheets[0].data[0][3].value).toBe(40);  // C2 + A2 = 40
     });
 
     it('should handle multi-row dependencies', () => {
       const rcsv = `A:number,B:number
-10,=A1*2
-=B1+5,=A2*3`;
+10,=A2*2
+=B2+5,=A3*3`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
       
-      expect(result.sheets[0].data[0][1].value).toBe(20);  // A1 * 2 = 20
-      expect(result.sheets[0].data[1][0].value).toBe(25);  // B1 + 5 = 25
+      expect(result.sheets[0].data[0][1].value).toBe(20);  // A2 * 2 = 20
+      expect(result.sheets[0].data[1][0].value).toBe(25);  // B2 + 5 = 25
       expect(result.sheets[0].data[1][1].value).toBe(75);  // A2 * 3 = 75
     });
   });
@@ -213,7 +213,7 @@ describe('Calculator Engine', () => {
   describe('Error Handling', () => {
     it('should handle division by zero', () => {
       const rcsv = `A:number,B:number,Result:number
-10,0,=A1/B1`;
+10,0,=A2/B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -224,7 +224,7 @@ describe('Calculator Engine', () => {
 
     it('should handle circular references', () => {
       const rcsv = `A:number,B:number
-=B1,=A1`;
+=B2,=A2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -248,7 +248,7 @@ describe('Calculator Engine', () => {
 
     it('should handle invalid function names', () => {
       const rcsv = `A:number,Result:number
-10,=INVALID(A1)`;
+10,=INVALID(A2)`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -261,7 +261,7 @@ describe('Calculator Engine', () => {
   describe('Type Conversion', () => {
     it('should convert strings to numbers', () => {
       const rcsv = `A:text,Result:number
-"42",=A1*2`;
+"42",=A2*2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -271,7 +271,7 @@ describe('Calculator Engine', () => {
 
     it('should convert boolean to numbers', () => {
       const rcsv = `A:boolean,B:boolean,Result:number
-true,false,=A1+B1`;
+true,false,=A2+B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -281,7 +281,7 @@ true,false,=A1+B1`;
 
     it('should handle non-numeric strings gracefully', () => {
       const rcsv = `A:text,Result:number
-"hello",=A1*2`;
+"hello",=A2*2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -294,9 +294,9 @@ true,false,=A1+B1`;
     it('should calculate the example budget from technical decisions', () => {
       const rcsv = `## Chart: type=bar, title="Budget Overview", x=Category, y=Budget
 Category:text,Budget:currency,Actual:currency,Total:currency
-Housing,2000,1950,=B1+C1
-Food,800,850,=B2+C2
-Total,=SUM(B1:B2),=SUM(C1:C2),=SUM(D1:D2)`;
+Housing,2000,1950,=B2+C2
+Food,800,850,=B3+C3
+Total,=SUM(B2:B3),=SUM(C2:C3),=SUM(D2:D3)`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);

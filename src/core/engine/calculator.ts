@@ -360,7 +360,7 @@ class SheetCalculator {
   
   private getCellRef(row: number, col: number): string {
     const colStr = this.numberToColumn(col);
-    return `${colStr}${row + 1}`;
+    return `${colStr}${row + 2}`; // +2 because row 1 is header (not in data array)
   }
   
   private numberToColumn(num: number): string {
@@ -378,7 +378,7 @@ class SheetCalculator {
     
     const [, colStr, rowStr] = match;
     const col = this.columnToNumber(colStr);
-    const row = parseInt(rowStr) - 1;
+    const row = parseInt(rowStr) - 2; // -2 because row 1 is header (not in data array)
     
     return { row, col };
   }
