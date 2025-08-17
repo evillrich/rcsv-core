@@ -18,6 +18,7 @@ describe('Core Types', () => {
     it('should have correct default configuration', () => {
       expect(DEFAULT_CONFIG.typeInference.sampleSize).toBe(100);
       expect(DEFAULT_CONFIG.typeInference.confidenceThreshold).toBe(0.8);
+      expect(DEFAULT_CONFIG.typeInference.formulaThreshold).toBe(0.5);
       expect(DEFAULT_CONFIG.parser.strict).toBe(false);
     });
   });

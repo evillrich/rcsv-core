@@ -1,6 +1,6 @@
 /**
  * RCSV Web Renderer
- * HTML table and chart rendering for RCSV documents
+ * HTML table and chart rendering for RCSV documents with layout positioning
  */
 
 import type { RCSVDocument } from '../core/engine/types';
@@ -9,6 +9,16 @@ import { renderChart } from './charts';
 
 export { renderTable } from './table';
 export { renderChart } from './charts';
+
+/**
+ * Represents a rendered content block (chart or table) with positioning
+ */
+interface RenderedBlock {
+  type: 'chart' | 'table';
+  element: HTMLElement;
+  position: 'bottom' | 'right'; // Default is always 'bottom'
+  sourceOrder: number;
+}
 
 /**
  * Render an entire RCSV document to HTML
@@ -46,46 +56,103 @@ export function renderRCSV(doc: RCSVDocument, container: HTMLElement): void {
       sheetDiv.appendChild(sheetTitle);
     }
     
-    // Render charts first (they're typically summary visuals)
-    if (sheet.charts && sheet.charts.length > 0) {
-      const chartsContainer = document.createElement('div');
-      chartsContainer.className = 'rcsv-charts';
+    // Create all content blocks in source order
+    const blocks: RenderedBlock[] = [];
+    
+    // Process contentBlocks in their source order
+    if (sheet.metadata.contentBlocks && sheet.metadata.contentBlocks.length > 0) {
+      // Sort by source order to ensure proper sequence
+      const sortedBlocks = [...sheet.metadata.contentBlocks].sort((a, b) => a.sourceOrder - b.sourceOrder);
       
-      sheet.charts.forEach(chart => {
-        const chartWrapper = document.createElement('div');
-        chartWrapper.className = 'rcsv-chart-wrapper';
-        
-        try {
-          const canvas = renderChart(chart, sheet);
-          chartWrapper.appendChild(canvas);
-          chartsContainer.appendChild(chartWrapper);
-        } catch (error) {
-          console.error('Error rendering chart:', error);
-          const errorDiv = document.createElement('div');
-          errorDiv.className = 'rcsv-chart-error';
-          errorDiv.textContent = `Chart rendering error: ${(error as Error).message}`;
-          chartWrapper.appendChild(errorDiv);
-          chartsContainer.appendChild(chartWrapper);
+      sortedBlocks.forEach(contentBlock => {
+        if (contentBlock.type === 'chart' && contentBlock.chart) {
+          try {
+            const canvas = renderChart(contentBlock.chart, sheet);
+            const chartWrapper = document.createElement('div');
+            chartWrapper.className = 'rcsv-chart-wrapper';
+            chartWrapper.appendChild(canvas);
+            
+            blocks.push({
+              type: 'chart',
+              element: chartWrapper,
+              position: contentBlock.chart.position || 'bottom',
+              sourceOrder: contentBlock.sourceOrder
+            });
+          } catch (error) {
+            console.error('Error rendering chart:', error);
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'rcsv-chart-error';
+            errorDiv.textContent = `Chart rendering error: ${(error as Error).message}`;
+            
+            blocks.push({
+              type: 'chart',
+              element: errorDiv,
+              position: contentBlock.chart.position || 'bottom',
+              sourceOrder: contentBlock.sourceOrder
+            });
+          }
+        } else if (contentBlock.type === 'table' && contentBlock.table) {
+          try {
+            const table = renderTable(sheet);
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'rcsv-table-wrapper';
+            tableWrapper.appendChild(table);
+            
+            blocks.push({
+              type: 'table',
+              element: tableWrapper,
+              position: contentBlock.table.position || 'bottom',
+              sourceOrder: contentBlock.sourceOrder
+            });
+          } catch (error) {
+            console.error('Error rendering table:', error);
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'rcsv-table-error';
+            errorDiv.textContent = `Table rendering error: ${(error as Error).message}`;
+            
+            blocks.push({
+              type: 'table',
+              element: errorDiv,
+              position: contentBlock.table.position || 'bottom',
+              sourceOrder: contentBlock.sourceOrder
+            });
+          }
         }
       });
-      
-      sheetDiv.appendChild(chartsContainer);
     }
     
-    // Render table
-    try {
-      const table = renderTable(sheet);
-      const tableWrapper = document.createElement('div');
-      tableWrapper.className = 'rcsv-table-wrapper';
-      tableWrapper.appendChild(table);
-      sheetDiv.appendChild(tableWrapper);
-    } catch (error) {
-      console.error('Error rendering table:', error);
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'rcsv-table-error';
-      errorDiv.textContent = `Table rendering error: ${(error as Error).message}`;
-      sheetDiv.appendChild(errorDiv);
+    // If no contentBlocks or no table declarations, add the default table at the end
+    if (!sheet.metadata.contentBlocks || 
+        !sheet.metadata.contentBlocks.some(block => block.type === 'table')) {
+      try {
+        const table = renderTable(sheet);
+        const tableWrapper = document.createElement('div');
+        tableWrapper.className = 'rcsv-table-wrapper';
+        tableWrapper.appendChild(table);
+        
+        blocks.push({
+          type: 'table',
+          element: tableWrapper,
+          position: 'bottom', // Always bottom for default table
+          sourceOrder: 9999 // Ensure it comes last
+        });
+      } catch (error) {
+        console.error('Error rendering table:', error);
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'rcsv-table-error';
+        errorDiv.textContent = `Table rendering error: ${(error as Error).message}`;
+        
+        blocks.push({
+          type: 'table',
+          element: errorDiv,
+          position: 'bottom',
+          sourceOrder: 9999
+        });
+      }
     }
+    
+    // Layout blocks according to positioning
+    layoutBlocks(blocks, sheetDiv);
     
     container.appendChild(sheetDiv);
   });
@@ -101,5 +168,36 @@ export function renderRCSV(doc: RCSVDocument, container: HTMLElement): void {
       </small>
     `;
     container.appendChild(statsDiv);
+  }
+}
+
+/**
+ * Layout content blocks according to their position metadata
+ * @param blocks - Array of rendered blocks in source order
+ * @param container - Container element to append layout to
+ */
+function layoutBlocks(blocks: RenderedBlock[], container: HTMLElement): void {
+  if (blocks.length === 0) return;
+  
+  let currentRow: HTMLElement | null = null;
+  
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    
+    // Add CSS classes for positioning
+    block.element.classList.add(`rcsv-position-${block.position}`);
+    
+    if (block.position === 'right' && currentRow) {
+      // Add to the current horizontal row
+      currentRow.appendChild(block.element);
+    } else {
+      // Create a new row (position is 'bottom' or this is the first block)
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'rcsv-layout-row';
+      rowDiv.appendChild(block.element);
+      
+      container.appendChild(rowDiv);
+      currentRow = rowDiv;
+    }
   }
 }

@@ -28,11 +28,16 @@ export interface ChartMetadata {
   series?: string[];
   values?: string;
   labels?: string;
+  position?: 'bottom' | 'right';
+}
+
+export interface TableMetadata {
+  position?: 'bottom' | 'right';
 }
 
 export interface ColumnMetadata {
   name: string;
-  type?: DataType;
+  type?: DataType | 'UNSPECIFIED';  // UNSPECIFIED = defer to post-calculation
   validationList?: string[]; // For category type
   formatting?: {
     align?: 'left' | 'center' | 'right';
@@ -42,9 +47,19 @@ export interface ColumnMetadata {
   };
 }
 
+export interface ContentBlock {
+  type: 'chart' | 'table';
+  sourceOrder: number;
+  lineNumber: number;
+  chart?: ChartMetadata;
+  table?: TableMetadata;
+}
+
 export interface SheetMetadata {
   charts: ChartMetadata[];
+  tables: TableMetadata[];
   columns: ColumnMetadata[];
+  contentBlocks: ContentBlock[];
 }
 
 export interface Sheet {
@@ -88,6 +103,7 @@ export type ASTNode =
 export interface TypeInferenceConfig {
   sampleSize: number;           // Default: 100
   confidenceThreshold: number;  // Default: 0.8 (80%)
+  formulaThreshold: number;     // Default: 0.5 (50%) - if >=50% formulas, defer to post-calc
 }
 
 export interface ParserConfig {
@@ -137,7 +153,8 @@ export interface RangeRef {
 export const DEFAULT_CONFIG: RCSVConfig = {
   typeInference: {
     sampleSize: 100,
-    confidenceThreshold: 0.8
+    confidenceThreshold: 0.8,
+    formulaThreshold: 0.5
   },
   parser: {
     strict: false

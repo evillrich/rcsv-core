@@ -214,6 +214,12 @@ button:hover {
   min-height: 300px;
 }
 
+/* Chart wrapper when positioned */
+.rcsv-position-right .rcsv-chart-wrapper,
+.rcsv-position-bottom .rcsv-chart-wrapper {
+  width: 100%;
+}
+
 .rcsv-chart {
   max-width: 100%;
   height: auto !important;
@@ -223,6 +229,39 @@ button:hover {
   color: var(--error-color);
   padding: 1rem;
   text-align: center;
+}
+
+/* Layout and Positioning */
+.rcsv-layout-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+
+.rcsv-position-bottom {
+  /* Default positioning - flexible width, not forced full width */
+  flex: 1 1 auto;
+  min-width: 300px;
+}
+
+.rcsv-position-right {
+  /* Side-by-side positioning */
+  flex: 0 1 auto;
+  min-width: 300px;
+  max-width: 48%;
+}
+
+/* Responsive behavior for positioning */
+@media (max-width: 768px) {
+  .rcsv-layout-row {
+    flex-direction: column;
+  }
+  
+  .rcsv-position-right {
+    flex: 1 1 100%;
+  }
 }
 
 /* Stats Footer */
