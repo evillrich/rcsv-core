@@ -520,6 +520,12 @@ class SheetCalculator {
         return this.functionMin(args);
       case 'MAX':
         return this.functionMax(args);
+      case 'ABS':
+        return this.functionAbs(args);
+      case 'ROUND':
+        return this.functionRound(args);
+      case 'COUNTA':
+        return this.functionCountA(args);
       default:
         throw new Error(`Unknown function: ${name}`);
     }
@@ -589,6 +595,54 @@ class SheetCalculator {
   }
   
   /**
+   * ABS function implementation
+   */
+  private functionAbs(args: ASTNode[]): number {
+    if (args.length !== 1) {
+      throw new Error('ABS function requires exactly 1 argument');
+    }
+    
+    const value = this.evaluateAST(args[0]);
+    const num = this.toNumber(value);
+    return Math.abs(num);
+  }
+  
+  /**
+   * ROUND function implementation
+   */
+  private functionRound(args: ASTNode[]): number {
+    if (args.length !== 2) {
+      throw new Error('ROUND function requires exactly 2 arguments');
+    }
+    
+    const value = this.evaluateAST(args[0]);
+    const digits = this.evaluateAST(args[1]);
+    
+    const num = this.toNumber(value);
+    const digitsNum = this.toNumber(digits);
+    
+    // Ensure digits is an integer
+    const digitsInt = Math.floor(digitsNum);
+    
+    // Use the standard JavaScript rounding with precision
+    const factor = Math.pow(10, digitsInt);
+    return Math.round(num * factor) / factor;
+  }
+  
+  /**
+   * COUNTA function implementation
+   */
+  private functionCountA(args: ASTNode[]): number {
+    let count = 0;
+    for (const arg of args) {
+      const values = this.flattenToValues(this.evaluateAST(arg));
+      // Count non-empty values (any type)
+      count += values.filter(v => this.isNonEmpty(v)).length;
+    }
+    return count;
+  }
+  
+  /**
    * Helper functions
    */
   private toNumber(value: any): number {
@@ -607,6 +661,19 @@ class SheetCalculator {
       return value.map(v => this.toNumber(v));
     }
     return [this.toNumber(value)];
+  }
+  
+  private flattenToValues(value: any): any[] {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  }
+  
+  private isNonEmpty(value: any): boolean {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string' && value.trim() === '') return false;
+    return true;
   }
   
   private getCellRef(row: number, col: number): string {

@@ -170,6 +170,147 @@ describe('Calculator Engine', () => {
       
       expect(result.sheets[0].data[0][1].value).toBe(30);
     });
+
+    it('should calculate ABS with positive number', () => {
+      const rcsv = `Value:number,Absolute:number
+5,=ABS(A2)`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].value).toBe(5);
+    });
+
+    it('should calculate ABS with negative number', () => {
+      const rcsv = `Value:number,Absolute:number
+-7,=ABS(A2)`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].value).toBe(7);
+    });
+
+    it('should calculate ABS with formula result', () => {
+      const rcsv = `A:number,B:number,Difference:number,AbsDiff:number
+10,15,=A2-B2,=ABS(C2)`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][2].value).toBe(-5); // A2-B2 = 10-15 = -5
+      expect(result.sheets[0].data[0][3].value).toBe(5);  // ABS(-5) = 5
+    });
+
+    it('should handle ABS with invalid argument count', () => {
+      const rcsv = `Value:number,Result:number
+5,"=ABS(A2,B2)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].error).toContain('ABS function requires exactly 1 argument');
+    });
+
+    it('should calculate ROUND with positive decimal places', () => {
+      const rcsv = `Value:number,Rounded:number
+3.14159,"=ROUND(A2,2)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].value).toBe(3.14);
+    });
+
+    it('should calculate ROUND with zero decimal places', () => {
+      const rcsv = `Value:number,Rounded:number
+3.7,"=ROUND(A2,0)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].value).toBe(4);
+    });
+
+    it('should calculate ROUND with negative decimal places', () => {
+      const rcsv = `Value:number,Rounded:number
+1234.5678,"=ROUND(A2,-2)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].value).toBe(1200);
+    });
+
+    it('should calculate ROUND with formula results', () => {
+      const rcsv = `A:number,B:number,Division:number,Rounded:number
+22,7,"=A2/B2","=ROUND(C2,3)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][2].value).toBeCloseTo(3.142857142857143);
+      expect(result.sheets[0].data[0][3].value).toBe(3.143);
+    });
+
+    it('should handle ROUND with invalid argument count', () => {
+      const rcsv = `Value:number,Result:number
+5,"=ROUND(A2)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][1].error).toContain('ROUND function requires exactly 2 arguments');
+    });
+
+    it('should calculate COUNTA with mixed data types', () => {
+      const rcsv = `A:text,B:number,C:text,CountAll:number
+Hello,10,World,=COUNTA(A2:C2)
+,20,,
+Text,,"",`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][3].value).toBe(3); // "Hello", 10, "World"
+      expect(result.sheets[0].data[1][3].value).toBe(1); // empty, 20, empty
+      expect(result.sheets[0].data[2][3].value).toBe(2); // "Text", empty, ""
+    });
+
+    it('should calculate COUNTA with individual cells', () => {
+      const rcsv = `A:text,B:number,C:boolean,CountAll:number
+Test,42,true,"=COUNTA(A2,B2,C2)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][3].value).toBe(3);
+    });
+
+    it('should calculate COUNTA vs COUNT difference', () => {
+      const rcsv = `A:text,B:number,C:text,CountNums:number,CountAll:number
+Text,10,More,"=COUNT(A2:C2)","=COUNTA(A2:C2)"`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][3].value).toBe(1); // COUNT only counts numbers (10)
+      expect(result.sheets[0].data[0][4].value).toBe(3); // COUNTA counts all non-empty ("Text", 10, "More")
+    });
+
+    it('should calculate COUNTA with empty cells', () => {
+      const rcsv = `A:text,B:text,C:text,CountAll:number
+Value1,,Value3,=COUNTA(A2:C2)
+,,"",
+,,Value6,`;
+      
+      const parsed = parseStructure(rcsv);
+      const result = calculate(parsed);
+      
+      expect(result.sheets[0].data[0][3].value).toBe(2); // "Value1", empty, "Value3"
+      expect(result.sheets[0].data[1][3].value).toBe(1); // empty, empty, ""
+      expect(result.sheets[0].data[2][3].value).toBe(1); // empty, empty, "Value6"
+    });
   });
 
   describe('Dependencies', () => {
