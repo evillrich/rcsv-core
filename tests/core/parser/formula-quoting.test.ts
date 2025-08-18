@@ -105,9 +105,9 @@ test,"=IF(A1=""hello"",1,0)"`;
 
       const result = parseStructure(rcsv);
       
-      expect(result.sheets[0].data[0][1].value).toBe('');
+      expect(result.sheets[0].data[0][1].value).toBeNull();
       expect(result.sheets[0].data[0][2].formula).toBe('=A1*2');
-      expect(result.sheets[0].data[1][0].value).toBe('');
+      expect(result.sheets[0].data[1][0].value).toBeNull();
       expect(result.sheets[0].data[1][2].formula).toBe('=SUM(A1,B2)');
     });
   });

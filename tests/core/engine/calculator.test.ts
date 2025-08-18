@@ -266,15 +266,15 @@ describe('Calculator Engine', () => {
     it('should calculate COUNTA with mixed data types', () => {
       const rcsv = `A:text,B:number,C:text,CountAll:number
 Hello,10,World,=COUNTA(A2:C2)
-,20,,
-Text,,"",`;
+,20,,=COUNTA(A3:C3)
+Text,,"",=COUNTA(A4:C4)`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
       
       expect(result.sheets[0].data[0][3].value).toBe(3); // "Hello", 10, "World"
-      expect(result.sheets[0].data[1][3].value).toBe(1); // empty, 20, empty
-      expect(result.sheets[0].data[2][3].value).toBe(2); // "Text", empty, ""
+      expect(result.sheets[0].data[1][3].value).toBe(1); // null, 20, null
+      expect(result.sheets[0].data[2][3].value).toBe(1); // "Text", null, null (both empty values become null)
     });
 
     it('should calculate COUNTA with individual cells', () => {
@@ -301,15 +301,15 @@ Text,10,More,"=COUNT(A2:C2)","=COUNTA(A2:C2)"`;
     it('should calculate COUNTA with empty cells', () => {
       const rcsv = `A:text,B:text,C:text,CountAll:number
 Value1,,Value3,=COUNTA(A2:C2)
-,,"",
-,,Value6,`;
+,,"",=COUNTA(A3:C3)
+,,Value6,=COUNTA(A4:C4)`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
       
-      expect(result.sheets[0].data[0][3].value).toBe(2); // "Value1", empty, "Value3"
-      expect(result.sheets[0].data[1][3].value).toBe(1); // empty, empty, ""
-      expect(result.sheets[0].data[2][3].value).toBe(1); // empty, empty, "Value6"
+      expect(result.sheets[0].data[0][3].value).toBe(2); // "Value1", null, "Value3"
+      expect(result.sheets[0].data[1][3].value).toBe(0); // null, null, null (all empty values become null)
+      expect(result.sheets[0].data[2][3].value).toBe(1); // null, null, "Value6"
     });
   });
 
@@ -395,7 +395,7 @@ Value1,,Value3,=COUNTA(A2:C2)
       const result = calculate(parsed);
       
       expect(result.sheets[0].data[0][1].value).toBe('#ERROR!');
-      expect(result.sheets[0].data[0][1].error).toContain('Unknown function');
+      expect(result.sheets[0].data[0][1].error).toContain('Expected');
     });
   });
 

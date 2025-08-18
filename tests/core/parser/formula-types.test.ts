@@ -12,7 +12,7 @@ describe('Formula Type Assignment', () => {
     const input = `## Chart: type=bar, title="Test", x=Month, y=Amount
 Month:text,Amount:currency,Growth:percentage
 January,1000,
-February,=A2*1.1,=(B2-B1)/B1
+February,=B1*1.1,=(B2-B1)/B1
 Total,=SUM(B1:B2),=AVERAGE(C2:C2)`;
 
     const doc = parseStructure(input);
@@ -31,10 +31,10 @@ Total,=SUM(B1:B2),=AVERAGE(C2:C2)`;
     expect(sheet.data[0][1].type).toBe(DataType.CURRENCY);
     expect(sheet.data[0][2].type).toBe(DataType.PERCENTAGE);
 
-    // Row 1: February,=A2*1.1,=(B2-B1)/B1
+    // Row 1: February,=B1*1.1,=(B2-B1)/B1
     expect(sheet.data[1][0].type).toBe(DataType.TEXT);
     expect(sheet.data[1][1].type).toBe(DataType.CURRENCY); // Formula cell should inherit column type
-    expect(sheet.data[1][1].formula).toBe('=A2*1.1');
+    expect(sheet.data[1][1].formula).toBe('=B1*1.1');
     expect(sheet.data[1][2].type).toBe(DataType.PERCENTAGE); // Formula cell should inherit column type
     expect(sheet.data[1][2].formula).toBe('=(B2-B1)/B1');
 
