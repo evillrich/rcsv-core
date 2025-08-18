@@ -231,5 +231,19 @@ Jan,100`;
       expect(chart.x).toBe('Month, Year');
       expect(chart.y).toEqual(['Revenue (USD)', 'Expenses, Total', '"Profit"']);
     });
+
+    it('should handle header names starting with equals sign', () => {
+      const input = `## Chart: type=bar, title="Summary Report", x="=Summary", y="=Total Revenue","=Total Expenses"
+"=Summary","=Total Revenue","=Total Expenses"
+Q1,10000,8000
+Q2,12000,9000`;
+
+      const doc = parseStructure(input);
+      const chart = doc.sheets[0].charts[0];
+      expect(chart.type).toBe('bar');
+      expect(chart.title).toBe('Summary Report');
+      expect(chart.x).toBe('=Summary');
+      expect(chart.y).toEqual(['=Total Revenue', '=Total Expenses']);
+    });
   });
 });

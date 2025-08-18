@@ -190,8 +190,7 @@ Feb,1200,1100`;
       expect(tables[0].position).toBe('bottom');
     });
 
-    // TODO: Fix escaping for comma-separated values in chart metadata
-    it.skip('should handle positioning with other chart properties', () => {
+    it('should handle positioning with other chart properties', () => {
       const input = `## Chart: type=line, title="Complex Chart", x=Month, y="Revenue, After Tax",Expenses, series="Net Revenue","Total Expenses", position=right
 Month,"Revenue, After Tax",Expenses
 Jan,1000,800
