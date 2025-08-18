@@ -6,6 +6,7 @@
 import { parseFormula } from '../parser/formula-wrapper';
 import { DEFAULT_CONFIG, DataType } from './types';
 import type { RCSVDocument, ASTNode, CellValue, Sheet, TypeInferenceConfig } from './types';
+import { executeFunction } from './function-registry';
 
 /**
  * Calculate all formulas in the document
@@ -573,150 +574,19 @@ class SheetCalculator {
   }
   
   /**
-   * Evaluate function calls
+   * Evaluate function calls using the function registry
    */
   private evaluateFunction(name: string, args: ASTNode[]): any {
-    switch (name.toUpperCase()) {
-      case 'SUM':
-        return this.functionSum(args);
-      case 'AVERAGE':
-        return this.functionAverage(args);
-      case 'COUNT':
-        return this.functionCount(args);
-      case 'MIN':
-        return this.functionMin(args);
-      case 'MAX':
-        return this.functionMax(args);
-      case 'ABS':
-        return this.functionAbs(args);
-      case 'ROUND':
-        return this.functionRound(args);
-      case 'COUNTA':
-        return this.functionCountA(args);
-      default:
-        throw new Error(`Unknown function: ${name}`);
-    }
+    return executeFunction(
+      name, 
+      args, 
+      (node: ASTNode) => this.evaluateAST(node),
+      (start: string, end: string) => this.getRangeRawValues(start, end)
+    );
   }
   
   /**
-   * SUM function implementation
-   */
-  private functionSum(args: ASTNode[]): number {
-    let sum = 0;
-    for (const arg of args) {
-      const values = this.flattenToNumbers(this.evaluateAST(arg));
-      sum += values.reduce((a, b) => a + b, 0);
-    }
-    return sum;
-  }
-  
-  /**
-   * AVERAGE function implementation
-   */
-  private functionAverage(args: ASTNode[]): number {
-    const allValues: number[] = [];
-    for (const arg of args) {
-      const values = this.flattenToNumbers(this.evaluateAST(arg));
-      allValues.push(...values);
-    }
-    if (allValues.length === 0) throw new Error('#DIV/0!');
-    return allValues.reduce((a, b) => a + b, 0) / allValues.length;
-  }
-  
-  /**
-   * COUNT function implementation
-   */
-  private functionCount(args: ASTNode[]): number {
-    let count = 0;
-    for (const arg of args) {
-      const values = this.flattenToValues(this.evaluateAST(arg));
-      count += values.filter(v => this.isNumeric(v)).length;
-    }
-    return count;
-  }
-  
-  /**
-   * MIN function implementation
-   */
-  private functionMin(args: ASTNode[]): number {
-    const allValues: number[] = [];
-    for (const arg of args) {
-      const values = this.flattenToNumbers(this.evaluateAST(arg));
-      allValues.push(...values);
-    }
-    if (allValues.length === 0) throw new Error('No values for MIN');
-    return Math.min(...allValues);
-  }
-  
-  /**
-   * MAX function implementation
-   */
-  private functionMax(args: ASTNode[]): number {
-    const allValues: number[] = [];
-    for (const arg of args) {
-      const values = this.flattenToNumbers(this.evaluateAST(arg));
-      allValues.push(...values);
-    }
-    if (allValues.length === 0) throw new Error('No values for MAX');
-    return Math.max(...allValues);
-  }
-  
-  /**
-   * ABS function implementation
-   */
-  private functionAbs(args: ASTNode[]): number {
-    if (args.length !== 1) {
-      throw new Error('ABS function requires exactly 1 argument');
-    }
-    
-    const value = this.evaluateAST(args[0]);
-    const num = this.toNumber(value);
-    return Math.abs(num);
-  }
-  
-  /**
-   * ROUND function implementation
-   */
-  private functionRound(args: ASTNode[]): number {
-    if (args.length !== 2) {
-      throw new Error('ROUND function requires exactly 2 arguments');
-    }
-    
-    const value = this.evaluateAST(args[0]);
-    const digits = this.evaluateAST(args[1]);
-    
-    const num = this.toNumber(value);
-    const digitsNum = this.toNumber(digits);
-    
-    // Ensure digits is an integer
-    const digitsInt = Math.floor(digitsNum);
-    
-    // Use the standard JavaScript rounding with precision
-    const factor = Math.pow(10, digitsInt);
-    return Math.round(num * factor) / factor;
-  }
-  
-  /**
-   * COUNTA function implementation
-   */
-  private functionCountA(args: ASTNode[]): number {
-    let count = 0;
-    for (const arg of args) {
-      if (arg.type === 'range') {
-        // For ranges, get raw cell values to check if they're truly empty
-        const rawValues = this.getRangeRawValues(arg.start, arg.end);
-        count += rawValues.filter(v => this.isCountANonEmpty(v)).length;
-      } else {
-        // For individual cells or expressions, use normal evaluation
-        const values = this.flattenToValues(this.evaluateAST(arg));
-        count += values.filter(v => this.isCountANonEmpty(v)).length;
-      }
-    }
-    return count;
-  }
-  
-  /**
-   * Helper functions
+   * Helper function for type conversion in binary operations
    */
   private toNumber(value: any): number {
     if (typeof value === 'number') return value;
@@ -729,50 +599,9 @@ class SheetCalculator {
     throw new Error(`Cannot convert ${typeof value} to number`);
   }
   
-  private flattenToNumbers(value: any): number[] {
-    if (Array.isArray(value)) {
-      return value.map(v => this.toNumber(v));
-    }
-    return [this.toNumber(value)];
-  }
-  
-  private flattenToValues(value: any): any[] {
-    if (Array.isArray(value)) {
-      return value;
-    }
-    return [value];
-  }
-  
-  private isNonEmpty(value: any): boolean {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string' && value.trim() === '') return false;
-    return true;
-  }
-  
   /**
-   * COUNTA-specific non-empty check
-   * For COUNTA: only null/undefined are considered empty
-   * Empty strings (""), whitespace, and all other values count as non-empty
+   * Cell reference helper functions
    */
-  private isCountANonEmpty(value: any): boolean {
-    return value !== null && value !== undefined;
-  }
-
-  /**
-   * Check if a value is numeric (for COUNT function)
-   */
-  private isNumeric(value: any): boolean {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'number') return !isNaN(value);
-    if (typeof value === 'string') {
-      // Try to parse as number, return false if it fails
-      const num = parseFloat(value);
-      return !isNaN(num) && isFinite(num);
-    }
-    if (typeof value === 'boolean') return true; // Booleans can be converted to numbers
-    return false;
-  }
-  
   private getCellRef(row: number, col: number): string {
     const colStr = this.numberToColumn(col);
     return `${colStr}${row + 2}`; // +2 because row 1 is header (not in data array)
@@ -828,7 +657,7 @@ class SheetCalculator {
   /**
    * Get raw values from a range (for COUNTA to properly handle empty cells)
    */
-  private getRangeRawValues(start: string, end: string): any[] {
+  getRangeRawValues(start: string, end: string): any[] {
     const range = this.expandRange(start, end);
     return range.map(ref => {
       const cell = this.getCellByRef(ref);
