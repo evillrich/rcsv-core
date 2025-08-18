@@ -12,7 +12,8 @@
       "Bash(npm run test:*)",
       "Bash(npm test:*)",
       "Bash(git checkout:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

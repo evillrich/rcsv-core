@@ -466,7 +466,7 @@ John Smith,john.smith@company.com,=RIGHT(B2,LEN(B2)-FIND("@",B2)),=LEFT(B2,FIND(
 
     it('should handle text functions with mathematical operations', () => {
       const rcsv = `Text:text,Number:number,Length:number,Repeated:text,Value:number
-"123",456,=LEN(A2),=REPT(A2,B2/100),=VALUE(A2)+B2`;
+"123",456,=LEN(A2),"=REPT(A2,B2/100)",=VALUE(A2)+B2`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);

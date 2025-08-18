@@ -64,6 +64,10 @@ export class RightFunction extends BaseFunction {
       throw new Error('#VALUE!');
     }
     
+    if (numChars === 0) {
+      return '';
+    }
+    
     // Use Array.from to handle Unicode characters properly
     const chars = Array.from(text);
     return chars.slice(-numChars).join('');

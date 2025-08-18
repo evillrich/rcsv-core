@@ -268,9 +268,14 @@ class SheetCalculator {
       return null;
     }
     
+    // For text types, preserve the original value completely - no trimming
+    if (dataType === DataType.TEXT || dataType === DataType.CATEGORY) {
+      return raw;
+    }
+    
     const trimmed = raw.trim();
     
-    // Handle empty strings after trimming
+    // Handle empty strings after trimming (only for non-text types)
     if (trimmed === '') {
       return null;
     }

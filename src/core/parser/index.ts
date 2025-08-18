@@ -522,12 +522,12 @@ function parseCSVData(csvText: string): {
     return { data: [], columns: [] };
   }
   
-  // Parse with PapaParse
+  // Parse with PapaParse - preserve raw whitespace for post-processing
   const parseResult = Papa.parse(csvText, {
     header: false,
     skipEmptyLines: true,
     delimiter: ",",
-    transform: (value: string) => value.trim() === "" ? null : value.trim()
+    transform: (value: string) => value === "" ? null : value
   });
   
   if (parseResult.errors.length > 0) {
@@ -616,10 +616,39 @@ function parseCSVData(csvText: string): {
     });
   });
   
+  // Post-process raw values: trim whitespace by default
+  // TODO: Add support for column format :preserve-spaces to skip trimming for specific columns
+  // e.g., A:text:preserve-spaces would preserve whitespace for that column
+  postProcessRawValues(data, columns);
+  
   // Infer types for columns that don't have explicit type annotations
   inferColumnTypes(data, columns, DEFAULT_CONFIG.typeInference);
   
   return { data, columns };
+}
+
+/**
+ * Post-process raw values: trim whitespace by default
+ * TODO: Skip trimming for columns with :preserve-spaces format
+ */
+function postProcessRawValues(data: CellValue[][], columns: ColumnMetadata[]): void {
+  for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+    for (let colIndex = 0; colIndex < data[rowIndex].length; colIndex++) {
+      const cell = data[rowIndex][colIndex];
+      
+      if (cell?.raw && typeof cell.raw === 'string') {
+        // TODO: Check if column has :preserve-spaces format and skip trimming
+        // For now, always trim (preserving existing CSV behavior)
+        const originalRaw = cell.raw;
+        cell.raw = cell.raw.trim();
+        
+        // Also update the value if it was set to the original raw value (non-formulas)
+        if (!cell.formula && cell.value === originalRaw) {
+          cell.value = cell.raw;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -802,9 +831,14 @@ function convertValueForType(raw: string | null, dataType: DataType): any {
     return null;
   }
   
+  // For text types, preserve the original value completely - no trimming
+  if (dataType === DataType.TEXT || dataType === DataType.CATEGORY) {
+    return raw;
+  }
+  
   const trimmed = raw.trim();
   
-  // Handle empty strings after trimming
+  // Handle empty strings after trimming (only for non-text types)
   if (trimmed === '') {
     return null;
   }
