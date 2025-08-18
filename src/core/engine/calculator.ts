@@ -261,42 +261,109 @@ class SheetCalculator {
   /**
    * Convert a raw string value to the appropriate type (Phase 2 version)
    */
-  private convertValueForType(raw: string, dataType: DataType): any {
+  private convertValueForType(raw: string | null, dataType: DataType): any {
+    // Handle null values
+    if (raw === null || raw === undefined) {
+      return null;
+    }
+    
     const trimmed = raw.trim();
     
+    // Handle empty strings after trimming
+    if (trimmed === '') {
+      return null;
+    }
+    
     switch (dataType) {
-      case 'number':
+      case DataType.NUMBER:
         // Remove commas and parse as number
         const numStr = trimmed.replace(/,/g, '');
         const num = parseFloat(numStr);
         return isNaN(num) ? trimmed : num;
         
-      case 'currency':
-        // Extract numeric value from currency
-        const currencyMatch = trimmed.match(/[\d,]+\.?\d*/);
+      case DataType.CURRENCY:
+        // Extract numeric value from currency with better international support
+        // Handle: $1,234.56, €1.234,56, £1,234.56, ¥1234, ₹1,234.56, 1234 USD, etc.
+        const currencyMatch = trimmed.match(/[\d,\.]+/);
         if (currencyMatch) {
-          const numVal = parseFloat(currencyMatch[0].replace(/,/g, ''));
+          let numStr = currencyMatch[0];
+          // Handle European decimal notation (1.234,56 -> 1234.56)
+          if (numStr.includes(',') && numStr.includes('.')) {
+            // If both comma and dot, assume European format if comma is last
+            if (numStr.lastIndexOf(',') > numStr.lastIndexOf('.')) {
+              numStr = numStr.replace(/\./g, '').replace(',', '.');
+            } else {
+              // American format, just remove commas
+              numStr = numStr.replace(/,/g, '');
+            }
+          } else if (numStr.includes(',')) {
+            // Only comma - could be thousands separator or decimal
+            const parts = numStr.split(',');
+            if (parts.length === 2 && parts[1].length <= 2) {
+              // Likely decimal separator (1,50)
+              numStr = numStr.replace(',', '.');
+            } else {
+              // Likely thousands separator (1,234)
+              numStr = numStr.replace(/,/g, '');
+            }
+          }
+          const numVal = parseFloat(numStr);
           return isNaN(numVal) ? trimmed : numVal;
         }
         return trimmed;
         
-      case 'percentage':
-        // Convert percentage to decimal
-        const percentMatch = trimmed.match(/^(\d+\.?\d*)%$/);
+      case DataType.PERCENTAGE:
+        // Convert percentage to decimal with better parsing
+        const percentMatch = trimmed.match(/^([\d,\.]+)%$/);
         if (percentMatch) {
-          return parseFloat(percentMatch[1]) / 100;
+          let numStr = percentMatch[1].replace(/,/g, '');
+          const numVal = parseFloat(numStr);
+          return isNaN(numVal) ? trimmed : numVal / 100;
         }
         return trimmed;
         
-      case 'boolean':
+      case DataType.BOOLEAN:
         const lower = trimmed.toLowerCase();
-        return ['true', 'yes', 'y'].includes(lower);
+        if (['true', 'yes', 'y', '1'].includes(lower)) {
+          return true;
+        } else if (['false', 'no', 'n', '0'].includes(lower)) {
+          return false;
+        }
+        return trimmed;
         
-      case 'date':
-        // Return as Date object
-        const date = new Date(trimmed);
+      case DataType.DATE:
+        // Better date parsing with multiple format support
+        let date: Date;
+        
+        // Try ISO format first (YYYY-MM-DD)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+          date = new Date(trimmed);
+        }
+        // Try US format (MM/DD/YYYY)
+        else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+          date = new Date(trimmed);
+        }
+        // Try European format (DD/MM/YYYY) - parse manually
+        else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+          const parts = trimmed.split('/');
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+          // If day > 12, assume DD/MM/YYYY format
+          if (day > 12 && month <= 12) {
+            date = new Date(parseInt(parts[2]), month - 1, day);
+          } else {
+            date = new Date(trimmed); // Fall back to default parsing
+          }
+        }
+        // Try other common formats
+        else {
+          date = new Date(trimmed);
+        }
+        
         return isNaN(date.getTime()) ? trimmed : date;
         
+      case DataType.TEXT:
+      case DataType.CATEGORY:
       default:
         return trimmed;
     }
@@ -562,8 +629,8 @@ class SheetCalculator {
   private functionCount(args: ASTNode[]): number {
     let count = 0;
     for (const arg of args) {
-      const values = this.flattenToNumbers(this.evaluateAST(arg));
-      count += values.length;
+      const values = this.flattenToValues(this.evaluateAST(arg));
+      count += values.filter(v => this.isNumeric(v)).length;
     }
     return count;
   }
@@ -690,6 +757,21 @@ class SheetCalculator {
   private isCountANonEmpty(value: any): boolean {
     return value !== null && value !== undefined;
   }
+
+  /**
+   * Check if a value is numeric (for COUNT function)
+   */
+  private isNumeric(value: any): boolean {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'number') return !isNaN(value);
+    if (typeof value === 'string') {
+      // Try to parse as number, return false if it fails
+      const num = parseFloat(value);
+      return !isNaN(num) && isFinite(num);
+    }
+    if (typeof value === 'boolean') return true; // Booleans can be converted to numbers
+    return false;
+  }
   
   private getCellRef(row: number, col: number): string {
     const colStr = this.numberToColumn(col);
@@ -750,9 +832,13 @@ class SheetCalculator {
     const range = this.expandRange(start, end);
     return range.map(ref => {
       const cell = this.getCellByRef(ref);
-      // Return the actual raw value, not processed value
-      // If cell doesn't exist, return null (not 0) so COUNTA can count properly
-      return cell?.raw ?? null;
+      // Return the native value for proper COUNTA counting
+      // If cell doesn't exist or has null value, return null so COUNTA can count properly
+      // For formula cells, use calculated value; for non-formula cells, use native value
+      if (!cell) {
+        return null;
+      }
+      return cell.formula ? cell.value : (cell.value ?? null);
     });
   }
   

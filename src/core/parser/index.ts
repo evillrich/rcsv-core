@@ -520,7 +520,8 @@ function parseCSVData(csvText: string): {
   const parseResult = Papa.parse(csvText, {
     header: false,
     skipEmptyLines: true,
-    transform: (value: string) => value.trim()
+    delimiter: ",",
+    transform: (value: string) => value.trim() === "" ? null : value.trim()
   });
   
   if (parseResult.errors.length > 0) {
@@ -591,15 +592,15 @@ function parseCSVData(csvText: string): {
   
   // Convert raw data to CellValue matrix
   const data: CellValue[][] = dataRows.map(row => {
-    return row.map((cellText) => {
+    return row.map((cellText, colIndex) => {
       const cell: CellValue = {
         raw: cellText,
         value: cellText,
         type: DataType.TEXT // Will be inferred later
       };
       
-      // Check if it's a formula
-      if (cellText.startsWith('=')) {
+      // Check if it's a formula (cellText could be null from transform)
+      if (cellText && typeof cellText === 'string' && cellText.startsWith('=')) {
         cell.formula = cellText;
         cell.value = null; // Will be calculated later
         // Formulas keep TEXT type for now
@@ -637,7 +638,7 @@ function inferColumnTypes(data: CellValue[][], columns: ColumnMetadata[], config
     
     for (let rowIndex = 0; rowIndex < sample.length; rowIndex++) {
       const cell = sample[rowIndex]?.[colIndex];
-      if (cell && cell.raw.trim() !== '') {
+      if (cell && cell.raw !== null && cell.raw !== undefined && cell.raw.trim() !== '') {
         if (cell.formula) {
           formulaCount++;
         } else {
@@ -686,6 +687,7 @@ function applyTypeToColumn(data: CellValue[][], colIndex: number, dataType: Data
       cell.type = dataType;
       // Only convert the value for non-formula cells (formulas will be calculated later)
       if (!cell.formula) {
+        // Store native value based on type conversion
         cell.value = convertValueForType(cell.raw, dataType);
       }
     }
@@ -788,8 +790,18 @@ function isDateString(value: string): boolean {
 /**
  * Convert a raw string value to the appropriate type
  */
-function convertValueForType(raw: string, dataType: DataType): any {
+function convertValueForType(raw: string | null, dataType: DataType): any {
+  // Handle null values
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+  
   const trimmed = raw.trim();
+  
+  // Handle empty strings after trimming
+  if (trimmed === '') {
+    return null;
+  }
   
   switch (dataType) {
     case DataType.NUMBER:
@@ -799,31 +811,88 @@ function convertValueForType(raw: string, dataType: DataType): any {
       return isNaN(num) ? trimmed : num;
       
     case DataType.CURRENCY:
-      // Extract numeric value from currency
-      const currencyMatch = trimmed.match(/[\d,]+\.?\d*/);
+      // Extract numeric value from currency with better international support
+      // Handle: $1,234.56, €1.234,56, £1,234.56, ¥1234, ₹1,234.56, 1234 USD, etc.
+      const currencyMatch = trimmed.match(/[\d,\.]+/);
       if (currencyMatch) {
-        const numVal = parseFloat(currencyMatch[0].replace(/,/g, ''));
+        let numStr = currencyMatch[0];
+        // Handle European decimal notation (1.234,56 -> 1234.56)
+        if (numStr.includes(',') && numStr.includes('.')) {
+          // If both comma and dot, assume European format if comma is last
+          if (numStr.lastIndexOf(',') > numStr.lastIndexOf('.')) {
+            numStr = numStr.replace(/\./g, '').replace(',', '.');
+          } else {
+            // American format, just remove commas
+            numStr = numStr.replace(/,/g, '');
+          }
+        } else if (numStr.includes(',')) {
+          // Only comma - could be thousands separator or decimal
+          const parts = numStr.split(',');
+          if (parts.length === 2 && parts[1].length <= 2) {
+            // Likely decimal separator (1,50)
+            numStr = numStr.replace(',', '.');
+          } else {
+            // Likely thousands separator (1,234)
+            numStr = numStr.replace(/,/g, '');
+          }
+        }
+        const numVal = parseFloat(numStr);
         return isNaN(numVal) ? trimmed : numVal;
       }
       return trimmed;
       
     case DataType.PERCENTAGE:
-      // Convert percentage to decimal
-      const percentMatch = trimmed.match(/^(\d+\.?\d*)%$/);
+      // Convert percentage to decimal with better parsing
+      const percentMatch = trimmed.match(/^([\d,\.]+)%$/);
       if (percentMatch) {
-        return parseFloat(percentMatch[1]) / 100;
+        let numStr = percentMatch[1].replace(/,/g, '');
+        const numVal = parseFloat(numStr);
+        return isNaN(numVal) ? trimmed : numVal / 100;
       }
       return trimmed;
       
     case DataType.BOOLEAN:
       const lower = trimmed.toLowerCase();
-      return ['true', 'yes', 'y'].includes(lower);
+      if (['true', 'yes', 'y', '1'].includes(lower)) {
+        return true;
+      } else if (['false', 'no', 'n', '0'].includes(lower)) {
+        return false;
+      }
+      return trimmed;
       
     case DataType.DATE:
-      // Return as Date object
-      const date = new Date(trimmed);
+      // Better date parsing with multiple format support
+      let date: Date;
+      
+      // Try ISO format first (YYYY-MM-DD)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        date = new Date(trimmed);
+      }
+      // Try US format (MM/DD/YYYY)
+      else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+        date = new Date(trimmed);
+      }
+      // Try European format (DD/MM/YYYY) - parse manually
+      else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+        const parts = trimmed.split('/');
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        // If day > 12, assume DD/MM/YYYY format
+        if (day > 12 && month <= 12) {
+          date = new Date(parseInt(parts[2]), month - 1, day);
+        } else {
+          date = new Date(trimmed); // Fall back to default parsing
+        }
+      }
+      // Try other common formats
+      else {
+        date = new Date(trimmed);
+      }
+      
       return isNaN(date.getTime()) ? trimmed : date;
       
+    case DataType.TEXT:
+    case DataType.CATEGORY:
     default:
       return trimmed;
   }
@@ -842,7 +911,7 @@ function checkForSplitFormulas(dataRows: string[][], expectedColumns: number): v
         const nextCell = row[i + 1];
         
         // Pattern 1: Cell starts with = but doesn't look like complete formula
-        if (cell.startsWith('=') && !cell.includes(')') && nextCell.includes(')')) {
+        if (cell && nextCell && cell.startsWith('=') && !cell.includes(')') && nextCell.includes(')')) {
           const possibleFormula = cell + ',' + nextCell;
           console.warn(`Warning: Possible split formula detected at row ${rowIndex + 1}.`);
           console.warn(`Found: "${cell}" followed by "${nextCell}"`);
@@ -851,7 +920,7 @@ function checkForSplitFormulas(dataRows: string[][], expectedColumns: number): v
         }
         
         // Pattern 2: Cell starts with function name but has unclosed parentheses
-        if (cell.match(/^=\w+\([^)]*$/) && nextCell.match(/[^(]*\)/)) {
+        if (cell && nextCell && cell.match(/^=\w+\([^)]*$/) && nextCell.match(/[^(]*\)/)) {
           const possibleFormula = cell + ',' + nextCell;
           console.warn(`Warning: Possible split formula detected at row ${rowIndex + 1}.`);
           console.warn(`Found: "${cell}" followed by "${nextCell}"`);
@@ -863,7 +932,7 @@ function checkForSplitFormulas(dataRows: string[][], expectedColumns: number): v
     
     // Check for incomplete formulas (start with = but look incomplete)
     row.forEach((cell, colIndex) => {
-      if (cell.startsWith('=')) {
+      if (cell && cell.startsWith('=')) {
         // Check if it looks like an incomplete formula
         if (cell.match(/^=\w+\([^)]*$/) && !cell.includes(',')) {
           // This might be the start of a split formula
