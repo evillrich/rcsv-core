@@ -581,6 +581,8 @@ class SheetCalculator {
       name, 
       args, 
       (node: ASTNode) => this.evaluateAST(node),
+      (ref: string) => this.getCellValueAsNumber(ref),
+      (ref: string) => this.getCellValueAsString(ref),
       (start: string, end: string) => this.getRangeRawValues(start, end)
     );
   }
@@ -649,9 +651,55 @@ class SheetCalculator {
     return cell?.value ?? 0;
   }
   
+  /**
+   * Get cell value as a number (for math functions)
+   * Missing or null cells default to 0
+   */
+  getCellValueAsNumber(ref: string): number {
+    const cell = this.getCellByRef(ref);
+    const value = cell?.value;
+    
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      return isNaN(num) ? 0 : num;
+    }
+    if (typeof value === 'boolean') return value ? 1 : 0;
+    return 0;
+  }
+  
+  /**
+   * Get cell value as a string (for text functions)
+   * Missing or null cells default to empty string
+   */
+  getCellValueAsString(ref: string): string {
+    const cell = this.getCellByRef(ref);
+    const value = cell?.value;
+    
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+  
   getRangeValues(start: string, end: string): any[] {
     const range = this.expandRange(start, end);
     return range.map(ref => this.getCellValue(ref));
+  }
+  
+  /**
+   * Get range values as numbers (for math functions)
+   */
+  getRangeValuesAsNumbers(start: string, end: string): number[] {
+    const range = this.expandRange(start, end);
+    return range.map(ref => this.getCellValueAsNumber(ref));
+  }
+  
+  /**
+   * Get range values as strings (for text functions)
+   */
+  getRangeValuesAsStrings(start: string, end: string): string[] {
+    const range = this.expandRange(start, end);
+    return range.map(ref => this.getCellValueAsString(ref));
   }
   
   /**

@@ -176,9 +176,16 @@ export interface SpreadsheetFunction {
    * Execute the function
    * @param args - AST nodes representing function arguments
    * @param evaluateAST - Function to evaluate AST nodes to values
+   * @param getCellValueAsNumber - Function to get cell values as numbers (missing = 0)
+   * @param getCellValueAsString - Function to get cell values as strings (missing = "")
    * @returns Calculated result
    */
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any): any;
+  execute(
+    args: ASTNode[], 
+    evaluateAST: (node: ASTNode) => any,
+    getCellValueAsNumber: (ref: string) => number,
+    getCellValueAsString: (ref: string) => string
+  ): any;
 }
 
 /**
@@ -186,7 +193,12 @@ export interface SpreadsheetFunction {
  * Provides common functionality and error handling
  */
 export abstract class BaseFunction implements SpreadsheetFunction {
-  abstract execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any): any;
+  abstract execute(
+    args: ASTNode[], 
+    evaluateAST: (node: ASTNode) => any,
+    getCellValueAsNumber: (ref: string) => number,
+    getCellValueAsString: (ref: string) => string
+  ): any;
   
   /**
    * Helper to evaluate all arguments to values

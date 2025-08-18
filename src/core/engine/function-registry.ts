@@ -76,6 +76,8 @@ initializeRegistry();
  * @param functionName - Name of the function to execute (case-insensitive)
  * @param args - AST nodes representing function arguments
  * @param evaluateAST - Function to evaluate AST nodes to values
+ * @param getCellValueAsNumber - Function to get cell values as numbers (missing = 0)
+ * @param getCellValueAsString - Function to get cell values as strings (missing = "")
  * @param getRangeRawValues - Optional function to get raw values from ranges (for COUNTA)
  * @returns Result of function execution
  * @throws Error if function is not found or execution fails
@@ -84,6 +86,8 @@ export function executeFunction(
   functionName: string, 
   args: ASTNode[], 
   evaluateAST: (node: ASTNode) => any,
+  getCellValueAsNumber: (ref: string) => number,
+  getCellValueAsString: (ref: string) => string,
   getRangeRawValues?: (start: string, end: string) => any[]
 ): any {
   const upperName = functionName.toUpperCase();
@@ -100,7 +104,7 @@ export function executeFunction(
     return countAFunc.execute(args, evaluateAST, getRangeRawValues);
   }
   
-  return func.execute(args, evaluateAST);
+  return func.execute(args, evaluateAST, getCellValueAsNumber, getCellValueAsString);
 }
 
 /**

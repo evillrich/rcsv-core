@@ -14,7 +14,7 @@ import { BaseFunction, validateArgumentCount, validateArgumentRange, toBoolean }
  * Usage: IF(condition, value_if_true, value_if_false)
  */
 export class IfFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any): any {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any {
     validateArgumentCount('IF', args, 3);
     
     const condition = evaluateAST(args[0]);
@@ -33,7 +33,7 @@ export class IfFunction extends BaseFunction {
  * Usage: AND(condition1, [condition2], ...)
  */
 export class AndFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any): boolean {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): boolean {
     validateArgumentRange('AND', args, 1);
     
     for (const arg of args) {
@@ -52,7 +52,7 @@ export class AndFunction extends BaseFunction {
  * Usage: OR(condition1, [condition2], ...)
  */
 export class OrFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any): boolean {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): boolean {
     validateArgumentRange('OR', args, 1);
     
     for (const arg of args) {
@@ -71,7 +71,7 @@ export class OrFunction extends BaseFunction {
  * Usage: NOT(condition)
  */
 export class NotFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any): boolean {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): boolean {
     validateArgumentCount('NOT', args, 1);
     
     const value = evaluateAST(args[0]);
