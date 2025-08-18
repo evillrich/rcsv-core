@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseFormula } from '../../../src/core/parser/formula';
+import { parseFormula } from '../../../src/core/parser/formula-wrapper';
 
 describe('Formula Parser', () => {
   describe('Basic Numbers', () => {

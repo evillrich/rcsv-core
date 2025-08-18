@@ -2,10 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { parseStructure } from '../../../src/core/parser/index';
 
 describe('Metadata Parsing', () => {
-  it('should parse document metadata from ## comments', () => {
-    const rcsv = `## title=Budget Tracker
-## author=John Doe
-## version=1.0
+  it('should parse document metadata from # comments', () => {
+    const rcsv = `# title: Budget Tracker
+# author: John Doe
+# version: 1.0
 Category:text,Amount:currency
 Food,100`;
 
@@ -17,8 +17,8 @@ Food,100`;
   });
 
   it('should handle quoted metadata values', () => {
-    const rcsv = `## title="My Budget"
-## description='A detailed budget tracker'
+    const rcsv = `# title: "My Budget"
+# description: 'A detailed budget tracker'
 Category:text,Amount:currency
 Food,100`;
 
@@ -57,15 +57,15 @@ Food,100`;
     expect(result.sheets[0].charts[1].type).toBe('pie');
   });
 
-  it('should handle chart with multiple y values', () => {
+  it('should handle chart with quoted column name containing comma', () => {
     const rcsv = `## Chart: type=line, x=Month, y="Revenue,Expenses"
-Month:text,Revenue:currency,Expenses:currency
-Jan,1000,800`;
+Month:text,"Revenue,Expenses":currency
+Jan,1000`;
 
     const result = parseStructure(rcsv);
     
     const chart = result.sheets[0].charts[0];
-    expect(chart.y).toEqual(['Revenue', 'Expenses']);
+    expect(chart.y).toBe('Revenue,Expenses'); // Single column name with comma
   });
 
   it('should warn about invalid chart types', () => {
@@ -84,9 +84,9 @@ Food,100`;
   });
 
   it('should skip empty lines in metadata section', () => {
-    const rcsv = `## title=Test
+    const rcsv = `# title: Test
 
-## author=John
+# author: John
 
 
 Category:text,Amount:currency

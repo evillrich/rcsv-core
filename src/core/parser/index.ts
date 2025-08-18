@@ -94,7 +94,7 @@ function extractDocumentMetadata(lines: string[]): {
       const match = comment.match(/^(\w+):\s*(.+)$/);
       if (match) {
         const [, key, value] = match;
-        metadata[key.toLowerCase()] = value.trim();
+        metadata[key.toLowerCase()] = unquoteValue(value.trim());
       }
     }
     
@@ -326,15 +326,15 @@ function parseTableMetadata(comment: string, lineNumber: number): TableMetadata 
  * Parse comma-separated values that may contain quoted items
  * Uses CSV-style escaping: quotes are escaped by doubling ("")
  * Examples:
- * - "Revenue,Expenses" -> ["Revenue", "Expenses"]  
+ * - "Revenue,Expenses" -> "Revenue,Expenses" (single quoted value with comma)
  * - '"Revenue, After Tax",Expenses' -> ["Revenue, After Tax", "Expenses"]
  * - '"Sales ""2024""",Profit' -> ["Sales \"2024\"", "Profit"]
  * - 'Revenue' -> "Revenue" (single value)
  */
 function parseCommaSeparatedValues(value: string): string | string[] {
   if (!value.includes(',')) {
-    // Single value - just remove surrounding quotes if present
-    return value.replace(/^["']|["']$/g, '');
+    // Single value - just unquote if needed
+    return unquoteValue(value.trim());
   }
   
   const items: string[] = [];
@@ -346,32 +346,39 @@ function parseCommaSeparatedValues(value: string): string | string[] {
     const char = value[i];
     
     if (!inQuote) {
-      if ((char === '"' || char === "'") && (current === '' || current.match(/^\s*$/))) {
-        // Starting a quoted value
+      if ((char === '"' || char === "'") && current.trim() === '') {
+        // Starting a quoted value (only at beginning of item)
         inQuote = true;
         quoteChar = char;
+        current += char; // Include the opening quote
       } else if (char === ',') {
         // End of current item
-        items.push(current.trim().replace(/^["']|["']$/g, ''));
+        items.push(unquoteValue(current.trim()));
         current = '';
       } else {
         current += char;
       }
     } else {
       // Inside quotes
+      current += char;
       if (char === quoteChar) {
-        // End of quoted value
-        inQuote = false;
-        quoteChar = '';
-      } else {
-        current += char;
+        // Check if it's escaped (doubled) or end of quote
+        if (i + 1 < value.length && value[i + 1] === quoteChar) {
+          // Escaped quote - add the next quote and skip it
+          current += quoteChar;
+          i++; // Skip the next character
+        } else {
+          // End of quoted value
+          inQuote = false;
+          quoteChar = '';
+        }
       }
     }
   }
   
   // Add the last item
   if (current.trim()) {
-    items.push(current.trim().replace(/^["']|["']$/g, ''));
+    items.push(unquoteValue(current.trim()));
   }
   
   // Return single item as string, multiple as array
@@ -440,9 +447,10 @@ function parseKeyValuePairs(input: string): [string, string][] {
       
       if (!inQuote) {
         // Check if starting a quote
-        if ((char === '"' || char === "'") && value === '') {
+        if (char === '"' || char === "'") {
           inQuote = true;
           quoteChar = char;
+          value += char; // Include the opening quote
           pos++;
         } else if (char === ',') {
           // Check if this comma starts a new key=value pair
@@ -475,23 +483,21 @@ function parseKeyValuePairs(input: string): [string, string][] {
           pos++;
         }
       } else {
-        // Inside quotes
+        // Inside quotes - add everything including the closing quote
+        value += char;
         if (char === quoteChar) {
           // Check if it's escaped (doubled)
           if (pos + 1 < input.length && input[pos + 1] === quoteChar) {
-            // Escaped quote - add single quote to value
-            value += quoteChar;
-            pos += 2;
+            // Escaped quote - add the next quote too
+            pos++;
+            value += char; // Add the second quote
           } else {
             // End of quoted value
             inQuote = false;
             quoteChar = '';
-            pos++;
           }
-        } else {
-          value += char;
-          pos++;
         }
+        pos++;
       }
     }
     

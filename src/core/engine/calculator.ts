@@ -3,7 +3,7 @@
  * Handles formula calculation and dependency resolution
  */
 
-import { parseFormula } from '../parser/formula';
+import { parseFormula } from '../parser/formula-wrapper';
 import { DEFAULT_CONFIG, DataType } from './types';
 import type { RCSVDocument, ASTNode, CellValue, Sheet, TypeInferenceConfig } from './types';
 

@@ -395,7 +395,7 @@ Value1,,Value3,=COUNTA(A2:C2)
       const result = calculate(parsed);
       
       expect(result.sheets[0].data[0][1].value).toBe('#ERROR!');
-      expect(result.sheets[0].data[0][1].error).toContain('Expected');
+      expect(result.sheets[0].data[0][1].error).toContain('Unknown function');
     });
   });
 

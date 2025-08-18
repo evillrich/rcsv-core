@@ -1,5 +1,18 @@
 // RCSV Formula Grammar for Peggy
 // Supports: numbers, cell references, ranges, SUM function, basic math operators, cross-sheet references
+//
+// BUILD INSTRUCTIONS:
+// This file is the source grammar that generates src/core/parser/formula.ts
+// To regenerate the parser after modifying this grammar:
+//   npm run build:parser
+// 
+// The build process automatically:
+// 1. Runs peggy to generate the TypeScript parser
+// 2. Adds the required `parseFormula` export (via scripts/fix-parser-exports.js)
+//
+// MANUAL BUILD (if needed):
+//   npx peggy --allowed-start-rules Formula --format es --output src/core/parser/formula.ts src/core/parser/formula.pegjs
+//   node scripts/fix-parser-exports.js
 
 {
   // Helper function to create AST nodes
@@ -34,46 +47,46 @@
 
 // Main entry point
 Formula
-  = "=" expr:Expression { return expr; }
+  = "=" _ expr:Expression _ { return expr; }
 
 Expression
   = AdditionExpression
 
 AdditionExpression
-  = left:MultiplicationExpression tail:(("+" / "-") MultiplicationExpression)* {
+  = left:MultiplicationExpression tail:(_ ("+" / "-") _ MultiplicationExpression)* {
     return tail.reduce((result, element) => {
       return createNode('binary', {
-        op: element[0],
+        op: element[1],
         left: result,
-        right: element[1]
+        right: element[3]
       });
     }, left);
   }
 
 MultiplicationExpression
-  = left:PowerExpression tail:(("*" / "/") PowerExpression)* {
+  = left:PowerExpression tail:(_ ("*" / "/") _ PowerExpression)* {
     return tail.reduce((result, element) => {
       return createNode('binary', {
-        op: element[0],
+        op: element[1],
         left: result,
-        right: element[1]
+        right: element[3]
       });
     }, left);
   }
 
 PowerExpression
-  = left:UnaryExpression tail:("^" UnaryExpression)* {
+  = left:UnaryExpression tail:(_ "^" _ UnaryExpression)* {
     return tail.reduce((result, element) => {
       return createNode('binary', {
-        op: element[0],
+        op: element[1],
         left: result,
-        right: element[1]
+        right: element[3]
       });
     }, left);
   }
 
 UnaryExpression
-  = op:("+" / "-") operand:UnaryExpression {
+  = op:("+" / "-") _ operand:UnaryExpression {
     return createNode('unary', { op, operand });
   }
   / PrimaryExpression
@@ -84,10 +97,10 @@ PrimaryExpression
   / Range
   / CellReference
   / Number
-  / "(" expr:Expression ")" { return expr; }
+  / "(" _ expr:Expression _ ")" { return expr; }
 
 FunctionCall
-  = name:FunctionName "(" args:ArgumentList? ")" {
+  = name:FunctionName _ "(" _ args:ArgumentList? _ ")" {
     return createNode('function', {
       name: name.toUpperCase(),
       args: args || []
@@ -95,18 +108,13 @@ FunctionCall
   }
 
 FunctionName
-  = "SUM"i
-  / "AVERAGE"i
-  / "COUNTA"i
-  / "COUNT"i
-  / "MIN"i
-  / "MAX"i
-  / "ABS"i
-  / "ROUND"i
+  = name:$([A-Za-z][A-Za-z0-9_]*) { 
+    return name.toUpperCase();
+  }
 
 ArgumentList
-  = first:Expression rest:("," Expression)* {
-    return [first].concat(rest.map(r => r[1]));
+  = first:Expression rest:(_ "," _ Expression)* {
+    return [first].concat(rest.map(r => r[3]));
   }
 
 SheetReference

@@ -18,8 +18,26 @@ The project is currently in POC (Proof of Concept) phase, implementing basic fun
 
 ### Building
 
-- `npm run build` - Build library using TypeScript compiler and Vite
+- `npm run build` - Build library using TypeScript compiler and Vite (includes parser generation)
+- `npm run build:parser` - Regenerate formula parser from Peggy grammar
+- `npm run build:peggy` - Generate parser from `src/core/parser/formula.pegjs`  
+- `npm run fix:exports` - Add required exports to generated parser
 - Output goes to `dist/` directory with separate entry points for core and renderer
+
+#### Formula Parser Build Process
+
+The formula parser is generated from `src/core/parser/formula.pegjs` using Peggy:
+
+1. **Source**: `src/core/parser/formula.pegjs` (Peggy grammar)
+2. **Generated**: `src/core/parser/formula.ts` (TypeScript parser)
+3. **Build Command**: `npm run build:parser`
+
+The build process automatically:
+- Runs Peggy to generate the TypeScript parser
+- Adds the required `parseFormula` export (compatibility with existing code)
+- Handles whitespace parsing correctly
+
+**Important**: Always edit the `.pegjs` file, never edit the generated `.ts` file directly!
 
 ### Testing
 

@@ -19,7 +19,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run build:parser && tsc && vite build",
+    "build:parser": "npm run build:peggy && npm run fix:exports",
+    "build:peggy": "peggy --allowed-start-rules Formula --format es --output src/core/parser/formula.ts src/core/parser/formula.pegjs",
+    "fix:exports": "node scripts/fix-parser-exports.js",
     "preview": "vite preview",
     "test": "vitest --run",
     "test:watch": "vitest",
