@@ -97,6 +97,7 @@ PrimaryExpression
   / Range
   / CellReference
   / Number
+  / String
   / "(" _ expr:Expression _ ")" { return expr; }
 
 FunctionCall
@@ -143,6 +144,15 @@ Number
   = value:$([-]? [0-9]+ ("." [0-9]+)?) {
     return createNode('number', { value: parseFloat(value) });
   }
+
+String
+  = '"' chars:StringChar* '"' {
+    return createNode('string', { value: chars.join('') });
+  }
+
+StringChar
+  = '""' { return '"'; }  // Escaped quote
+  / [^"]                  // Any character except quote
 
 // Whitespace handling
 _ "whitespace"
