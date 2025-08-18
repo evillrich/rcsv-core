@@ -43,3 +43,6 @@ temp/
 # OS
 Thumbs.db
 desktop.ini
+
+# Claude Code
+.claude/
