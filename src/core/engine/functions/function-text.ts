@@ -14,7 +14,7 @@ import { BaseFunction, validateArgumentCount, validateArgumentRange, toString, t
  * Usage: CONCATENATE(text1, [text2], ...)
  */
 export class ConcatenateFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
     validateArgumentRange('CONCATENATE', args, 1);
     
     let result = '';
@@ -103,7 +103,7 @@ export class MidFunction extends BaseFunction {
  * Usage: LEN(text)
  */
 export class LenFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
     validateArgumentCount('LEN', args, 1);
     
     const text = args[0].type === 'cell' ? getCellValueAsString(args[0].ref) : toString(evaluateAST(args[0]));
@@ -117,7 +117,7 @@ export class LenFunction extends BaseFunction {
  * Usage: UPPER(text)
  */
 export class UpperFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
     validateArgumentCount('UPPER', args, 1);
     
     const text = args[0].type === 'cell' ? getCellValueAsString(args[0].ref) : toString(evaluateAST(args[0]));
@@ -130,7 +130,7 @@ export class UpperFunction extends BaseFunction {
  * Usage: LOWER(text)
  */
 export class LowerFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
     validateArgumentCount('LOWER', args, 1);
     
     const text = args[0].type === 'cell' ? getCellValueAsString(args[0].ref) : toString(evaluateAST(args[0]));
@@ -143,7 +143,7 @@ export class LowerFunction extends BaseFunction {
  * Usage: TRIM(text)
  */
 export class TrimFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
     validateArgumentCount('TRIM', args, 1);
     
     const text = args[0].type === 'cell' ? getCellValueAsString(args[0].ref) : toString(evaluateAST(args[0]));
@@ -314,7 +314,7 @@ export class ReptFunction extends BaseFunction {
  * Usage: EXACT(text1, text2)
  */
 export class ExactFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): boolean {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): boolean {
     validateArgumentCount('EXACT', args, 2);
     
     const text1 = args[0].type === 'cell' ? getCellValueAsString(args[0].ref) : toString(evaluateAST(args[0]));
@@ -329,7 +329,7 @@ export class ExactFunction extends BaseFunction {
  * Usage: CHAR(number)
  */
 export class CharFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): string {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, _getCellValueAsString: (ref: string) => string): string {
     validateArgumentCount('CHAR', args, 1);
     
     const num = args[0].type === 'cell' ? getCellValueAsNumber(args[0].ref) : Math.floor(toNumber(evaluateAST(args[0])));
@@ -348,7 +348,7 @@ export class CharFunction extends BaseFunction {
  * Usage: VALUE(text)
  */
 export class ValueFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
     validateArgumentCount('VALUE', args, 1);
     
     const text = (args[0].type === 'cell' ? getCellValueAsString(args[0].ref) : toString(evaluateAST(args[0]))).trim();
