@@ -46,7 +46,6 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@types/papaparse": "^5.3.14",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "@vitest/ui": "^1.0.0",
@@ -62,8 +61,7 @@
   },
   "dependencies": {
     "csv-parse": "^6.1.0",
-    "date-fns": "^3.6.0",
-    "papaparse": "^5.4.1"
+    "date-fns": "^3.6.0"
   },
   "repository": {
     "type": "git",

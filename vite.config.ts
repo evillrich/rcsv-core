@@ -12,10 +12,9 @@ export default defineConfig({
       formats: ['es', 'cjs']
     },
     rollupOptions: {
-      external: ['papaparse', 'chart.js'],
+      external: ['chart.js'],
       output: {
         globals: {
-          papaparse: 'Papa',
           'chart.js': 'Chart'
         }
       }

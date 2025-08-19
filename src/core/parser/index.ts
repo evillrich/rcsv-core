@@ -31,7 +31,7 @@ export function parseStructure(text: string): RCSVDocument {
     // Extract CSV data (everything after metadata comments)
     const csvData = sheetLines.slice(dataStartLine).join('\n');
     
-    // Parse CSV with PapaParse
+    // Parse CSV with csv-parse
     const { data, columns } = parseCSVData(csvData);
     
     return {
@@ -545,7 +545,7 @@ function parseCSVData(csvText: string): {
     },
     skip_empty_lines: true,
     relax_quotes: true,
-    relax_column_count: true, // Allow varying column counts (like PapaParse)
+    relax_column_count: true, // Allow varying column counts across rows
     skip_records_with_error: false // Don't skip malformed records, try to parse them
   });
   

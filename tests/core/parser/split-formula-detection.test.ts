@@ -5,7 +5,7 @@ describe('Split Formula Detection', () => {
   it('should detect and warn about split formulas', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     
-    // This CSV has an unquoted formula that would be split by PapaParse
+    // This CSV has an unquoted formula that would be split by CSV parsers
     const rcsv = `A:number,B:number,Total:number
 10,20,=SUM(A1,B1)`;
 
