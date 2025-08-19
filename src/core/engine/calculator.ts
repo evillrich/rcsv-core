@@ -542,11 +542,23 @@ class SheetCalculator {
   /**
    * Evaluate binary operations
    */
-  private evaluateBinaryOp(op: string, left: ASTNode, right: ASTNode): number {
+  private evaluateBinaryOp(op: string, left: ASTNode, right: ASTNode): any {
     const leftVal = this.evaluateAST(left);
     const rightVal = this.evaluateAST(right);
     
-    // Convert to numbers for arithmetic
+    // Handle string concatenation operator
+    if (op === '&') {
+      const leftStr = leftVal === null || leftVal === undefined ? '' : String(leftVal);
+      const rightStr = rightVal === null || rightVal === undefined ? '' : String(rightVal);
+      return leftStr + rightStr;
+    }
+    
+    // Handle comparison operators
+    if (['=', '<>', '<', '<=', '>', '>='].includes(op)) {
+      return this.evaluateComparison(op, leftVal, rightVal);
+    }
+    
+    // Convert to numbers for arithmetic operations
     const leftNum = this.toNumber(leftVal);
     const rightNum = this.toNumber(rightVal);
     
@@ -560,6 +572,57 @@ class SheetCalculator {
       case '^': return Math.pow(leftNum, rightNum);
       default:
         throw new Error(`Unknown binary operator: ${op}`);
+    }
+  }
+  
+  /**
+   * Evaluate comparison operations
+   */
+  private evaluateComparison(op: string, leftVal: any, rightVal: any): boolean {
+    // Handle null values
+    if (leftVal === null || leftVal === undefined) leftVal = '';
+    if (rightVal === null || rightVal === undefined) rightVal = '';
+    
+    // If both values are numbers, compare numerically
+    if (typeof leftVal === 'number' && typeof rightVal === 'number') {
+      switch (op) {
+        case '=': return leftVal === rightVal;
+        case '<>': return leftVal !== rightVal;
+        case '<': return leftVal < rightVal;
+        case '<=': return leftVal <= rightVal;
+        case '>': return leftVal > rightVal;
+        case '>=': return leftVal >= rightVal;
+      }
+    }
+    
+    // Try to convert to numbers if both can be converted
+    const leftNum = typeof leftVal === 'number' ? leftVal : parseFloat(String(leftVal));
+    const rightNum = typeof rightVal === 'number' ? rightVal : parseFloat(String(rightVal));
+    
+    if (!isNaN(leftNum) && !isNaN(rightNum)) {
+      switch (op) {
+        case '=': return leftNum === rightNum;
+        case '<>': return leftNum !== rightNum;
+        case '<': return leftNum < rightNum;
+        case '<=': return leftNum <= rightNum;
+        case '>': return leftNum > rightNum;
+        case '>=': return leftNum >= rightNum;
+      }
+    }
+    
+    // String comparison (case-insensitive for Excel compatibility)
+    const leftStr = String(leftVal).toLowerCase();
+    const rightStr = String(rightVal).toLowerCase();
+    
+    switch (op) {
+      case '=': return leftStr === rightStr;
+      case '<>': return leftStr !== rightStr;
+      case '<': return leftStr < rightStr;
+      case '<=': return leftStr <= rightStr;
+      case '>': return leftStr > rightStr;
+      case '>=': return leftStr >= rightStr;
+      default:
+        throw new Error(`Unknown comparison operator: ${op}`);
     }
   }
   

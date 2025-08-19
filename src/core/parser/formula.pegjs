@@ -50,7 +50,29 @@ Formula
   = "=" _ expr:Expression _ { return expr; }
 
 Expression
-  = AdditionExpression
+  = ComparisonExpression
+
+ComparisonExpression
+  = left:ConcatenationExpression tail:(_ ("<=" / ">=" / "<>" / "<" / ">" / "=") _ ConcatenationExpression)* {
+    return tail.reduce((result, element) => {
+      return createNode('binary', {
+        op: element[1],
+        left: result,
+        right: element[3]
+      });
+    }, left);
+  }
+
+ConcatenationExpression
+  = left:AdditionExpression tail:(_ "&" _ AdditionExpression)* {
+    return tail.reduce((result, element) => {
+      return createNode('binary', {
+        op: element[1],
+        left: result,
+        right: element[3]
+      });
+    }, left);
+  }
 
 AdditionExpression
   = left:MultiplicationExpression tail:(_ ("+" / "-") _ MultiplicationExpression)* {

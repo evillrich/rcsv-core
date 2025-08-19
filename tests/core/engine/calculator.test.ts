@@ -489,7 +489,7 @@ John Smith,john.smith@company.com,"=RIGHT(B2,LEN(B2)-FIND(""@"",B2))","=LEFT(B2,
     it('should handle text functions in conditional logic', () => {
       const rcsv = `Name:text,Valid:text,Length:number,Message:text
 John,"=IF(LEN(A2)>3,""Valid"",""Invalid"")",=LEN(A2),"=CONCATENATE(""Name: "",A2,"" - "",B2)"
-Al,"=IF(LEN(A2)>3,""Valid"",""Invalid"")",=LEN(A2),"=CONCATENATE(""Name: "",A2,"" - "",B2)"`;
+Al,"=IF(LEN(A3)>3,""Valid"",""Invalid"")",=LEN(A3),"=CONCATENATE(""Name: "",A3,"" - "",B3)"`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
