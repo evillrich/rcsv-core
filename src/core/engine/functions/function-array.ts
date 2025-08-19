@@ -14,7 +14,7 @@ import { BaseFunction, validateArgumentCount, validateArgumentRange } from './fu
  * Usage: TRANSPOSE(array)
  */
 export class TransposeFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any[][] {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any[][] {
     validateArgumentCount('TRANSPOSE', args, 1);
     
     // Implementation placeholder - would require 2D array manipulation
@@ -27,7 +27,7 @@ export class TransposeFunction extends BaseFunction {
  * Usage: SORT(array, [sort_index], [sort_order], [by_col])
  */
 export class SortFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any[] {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any[] {
     validateArgumentRange('SORT', args, 1, 4);
     
     // Implementation placeholder - would require array sorting logic
@@ -40,7 +40,7 @@ export class SortFunction extends BaseFunction {
  * Usage: UNIQUE(array, [by_col], [exactly_once])
  */
 export class UniqueFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any[] {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any[] {
     validateArgumentRange('UNIQUE', args, 1, 3);
     
     // Implementation placeholder - would require unique filtering logic
@@ -53,7 +53,7 @@ export class UniqueFunction extends BaseFunction {
  * Usage: FILTER(array, include, [if_empty])
  */
 export class FilterFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any[] {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any[] {
     validateArgumentRange('FILTER', args, 2, 3);
     
     // Implementation placeholder - would require conditional filtering logic

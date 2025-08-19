@@ -178,13 +178,15 @@ export interface SpreadsheetFunction {
    * @param evaluateAST - Function to evaluate AST nodes to values
    * @param getCellValueAsNumber - Function to get cell values as numbers (missing = 0)
    * @param getCellValueAsString - Function to get cell values as strings (missing = "")
+   * @param getRangeRawValues - Optional function to get raw values from ranges (for special functions like COUNTA)
    * @returns Calculated result
    */
   execute(
     args: ASTNode[], 
     evaluateAST: (node: ASTNode) => any,
-    getCellValueAsNumber: (ref: string) => number,
-    getCellValueAsString: (ref: string) => string
+    getCellValueAsNumber?: (ref: string) => number,
+    getCellValueAsString?: (ref: string) => string,
+    getRangeRawValues?: (start: string, end: string) => any[]
   ): any;
 }
 
@@ -196,8 +198,9 @@ export abstract class BaseFunction implements SpreadsheetFunction {
   abstract execute(
     args: ASTNode[], 
     evaluateAST: (node: ASTNode) => any,
-    getCellValueAsNumber: (ref: string) => number,
-    getCellValueAsString: (ref: string) => string
+    getCellValueAsNumber?: (ref: string) => number,
+    getCellValueAsString?: (ref: string) => string,
+    getRangeRawValues?: (start: string, end: string) => any[]
   ): any;
   
   /**

@@ -7,14 +7,14 @@
  */
 
 import type { ASTNode } from '../types';
-import { BaseFunction, validateArgumentCount, validateArgumentRange } from './function-utils';
+import { BaseFunction, validateArgumentRange } from './function-utils';
 
 /**
  * INDEX function - Returns a value from a specific position in a range
  * Usage: INDEX(array, row_num, [column_num])
  */
 export class IndexFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any {
     validateArgumentRange('INDEX', args, 2, 3);
     
     // Implementation placeholder - would require range evaluation logic
@@ -40,7 +40,7 @@ export class MatchFunction extends BaseFunction {
  * Usage: VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])
  */
 export class VlookupFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any {
     validateArgumentRange('VLOOKUP', args, 3, 4);
     
     // Implementation placeholder - would require table lookup logic
@@ -53,7 +53,7 @@ export class VlookupFunction extends BaseFunction {
  * Usage: HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])
  */
 export class HlookupFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): any {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): any {
     validateArgumentRange('HLOOKUP', args, 3, 4);
     
     // Implementation placeholder - would require table lookup logic

@@ -7,14 +7,14 @@
  */
 
 import type { ASTNode } from '../types';
-import { BaseFunction, validateArgumentCount, validateArgumentRange, toNumber } from './function-utils';
+import { BaseFunction, validateArgumentRange, toNumber } from './function-utils';
 
 /**
  * PMT function - Calculates payment for a loan
  * Usage: PMT(rate, nper, pv, [fv], [type])
  */
 export class PmtFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('PMT', args, 3, 5);
     
     const rate = toNumber(evaluateAST(args[0]));
@@ -39,7 +39,7 @@ export class PmtFunction extends BaseFunction {
  * Usage: PV(rate, nper, pmt, [fv], [type])
  */
 export class PvFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('PV', args, 3, 5);
     
     // Implementation placeholder - would require present value calculation
@@ -52,7 +52,7 @@ export class PvFunction extends BaseFunction {
  * Usage: FV(rate, nper, pmt, [pv], [type])
  */
 export class FvFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('FV', args, 3, 5);
     
     // Implementation placeholder - would require future value calculation
@@ -65,7 +65,7 @@ export class FvFunction extends BaseFunction {
  * Usage: NPV(rate, value1, [value2], ...)
  */
 export class NpvFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('NPV', args, 2);
     
     const rate = toNumber(evaluateAST(args[0]));
@@ -85,7 +85,7 @@ export class NpvFunction extends BaseFunction {
  * Usage: IRR(values, [guess])
  */
 export class IrrFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('IRR', args, 1, 2);
     
     // Implementation placeholder - would require iterative IRR calculation

@@ -14,7 +14,7 @@ import { BaseFunction, validateArgumentCount, toNumber } from './function-utils'
  * Usage: NOW()
  */
 export class NowFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): Date {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): Date {
     validateArgumentCount('NOW', args, 0);
     
     return new Date();
@@ -26,7 +26,7 @@ export class NowFunction extends BaseFunction {
  * Usage: TODAY()
  */
 export class TodayFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): Date {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): Date {
     validateArgumentCount('TODAY', args, 0);
     
     const now = new Date();
@@ -39,7 +39,7 @@ export class TodayFunction extends BaseFunction {
  * Usage: DATE(year, month, day)
  */
 export class DateFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): Date {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): Date {
     validateArgumentCount('DATE', args, 3);
     
     const year = Math.floor(toNumber(evaluateAST(args[0])));
@@ -56,7 +56,7 @@ export class DateFunction extends BaseFunction {
  * Usage: YEAR(date)
  */
 export class YearFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('YEAR', args, 1);
     
     const value = evaluateAST(args[0]);
@@ -81,7 +81,7 @@ export class YearFunction extends BaseFunction {
  * Usage: MONTH(date)
  */
 export class MonthFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('MONTH', args, 1);
     
     const value = evaluateAST(args[0]);
@@ -107,7 +107,7 @@ export class MonthFunction extends BaseFunction {
  * Usage: DAY(date)
  */
 export class DayFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('DAY', args, 1);
     
     const value = evaluateAST(args[0]);

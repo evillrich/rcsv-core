@@ -97,14 +97,7 @@ export function executeFunction(
     throw new Error(`Unknown function: ${functionName}`);
   }
   
-  // Special handling for COUNTA which needs access to raw values
-  if (upperName === 'COUNTA' && getRangeRawValues) {
-    // Cast to access the special COUNTA execute method
-    const countAFunc = func as any;
-    return countAFunc.execute(args, evaluateAST, getRangeRawValues);
-  }
-  
-  return func.execute(args, evaluateAST, getCellValueAsNumber, getCellValueAsString);
+  return func.execute(args, evaluateAST, getCellValueAsNumber, getCellValueAsString, getRangeRawValues);
 }
 
 /**
@@ -153,7 +146,7 @@ export function getImplementationStats(): { implemented: number; placeholder: nu
   for (const func of functionRegistry.values()) {
     try {
       // Try to determine if it's a placeholder by checking for "not yet implemented" in error message
-      const testResult = func.execute([], () => 0);
+      func.execute([], () => 0, () => 0, () => '');
       implemented++;
     } catch (error) {
       if (error instanceof Error && error.message.includes('not yet implemented')) {
