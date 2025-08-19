@@ -43,7 +43,7 @@ class DocumentCalculator {
    */
   calculateAll(): void {
     // Calculate each sheet
-    for (const calculator of this.sheetCalculators.values()) {
+    for (const calculator of Array.from(this.sheetCalculators.values())) {
       calculator.calculateAll();
     }
   }
@@ -368,8 +368,6 @@ class SheetCalculator {
         
         return isNaN(date.getTime()) ? trimmed : date;
         
-      case DataType.TEXT:
-      case DataType.CATEGORY:
       default:
         return trimmed;
     }
@@ -464,7 +462,7 @@ class SheetCalculator {
     try {
       // Calculate dependencies first
       const deps = this.dependencies.get(cellRef) || new Set();
-      for (const dep of deps) {
+      for (const dep of Array.from(deps)) {
         this.calculateCell(dep);
       }
       
