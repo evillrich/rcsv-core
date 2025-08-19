@@ -3,7 +3,7 @@
  * Handles parsing of RCSV format including metadata, CSV data, and formulas
  */
 
-import Papa from 'papaparse';
+import { parse } from 'csv-parse/browser/esm/sync';
 import { DataType, DEFAULT_CONFIG } from '../engine/types';
 import type { RCSVDocument, DocumentMetadata, ChartMetadata, TableMetadata, CellValue, ColumnMetadata, TypeInferenceConfig, ContentBlock } from '../engine/types';
 
@@ -512,7 +512,7 @@ function parseKeyValuePairs(input: string): [string, string][] {
 
 
 /**
- * Parse CSV data using PapaParse and create cell value matrix
+ * Parse CSV data using csv-parse and create cell value matrix
  */
 function parseCSVData(csvText: string): {
   data: CellValue[][];
@@ -522,26 +522,40 @@ function parseCSVData(csvText: string): {
     return { data: [], columns: [] };
   }
   
-  // Parse with PapaParse - preserve raw whitespace for post-processing
-  const parseResult = Papa.parse(csvText, {
-    header: false,
-    skipEmptyLines: true,
-    delimiter: ",",
-    transform: (value: string) => value === "" ? null : value
+  // Parse with csv-parse - smart null vs "" handling with quoting detection
+  const rawRows = parse(csvText, {
+    cast: (value: string, context: any) => {
+      // Truly empty cell (unquoted) -> null (missing data)
+      if (value === "" && !context.quoting) {
+        return null;
+      }
+      
+      // Quoted empty string -> "" (intentional empty)
+      if (value === "" && context.quoting) {
+        return "";
+      }
+      
+      // Quoted fields with content -> preserve all spaces
+      if (context.quoting) {
+        return value;
+      }
+      
+      // Unquoted fields -> trim spaces (standard CSV behavior)
+      return value.trim();
+    },
+    skip_empty_lines: true,
+    relax_quotes: true,
+    relax_column_count: true, // Allow varying column counts (like PapaParse)
+    skip_records_with_error: false // Don't skip malformed records, try to parse them
   });
   
-  if (parseResult.errors.length > 0) {
-    console.warn('CSV parsing warnings:', parseResult.errors);
-  }
-  
-  const rawRows = parseResult.data as string[][];
   if (rawRows.length === 0) {
     return { data: [], columns: [] };
   }
   
   // Filter out rows that are effectively empty (all cells are empty/whitespace)
   const filteredRows = rawRows.filter(row => 
-    row.some(cell => cell && cell.trim() !== '')
+    row.some(cell => cell !== null && cell !== undefined && cell.trim() !== '')
   );
   
   if (filteredRows.length === 0) {
@@ -616,10 +630,7 @@ function parseCSVData(csvText: string): {
     });
   });
   
-  // Post-process raw values: trim whitespace by default
-  // TODO: Add support for column format :preserve-spaces to skip trimming for specific columns
-  // e.g., A:text:preserve-spaces would preserve whitespace for that column
-  postProcessRawValues(data, columns);
+  // csv-parse handles whitespace processing with cast function, no post-processing needed
   
   // Infer types for columns that don't have explicit type annotations
   inferColumnTypes(data, columns, DEFAULT_CONFIG.typeInference);
@@ -627,29 +638,6 @@ function parseCSVData(csvText: string): {
   return { data, columns };
 }
 
-/**
- * Post-process raw values: trim whitespace by default
- * TODO: Skip trimming for columns with :preserve-spaces format
- */
-function postProcessRawValues(data: CellValue[][], columns: ColumnMetadata[]): void {
-  for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
-    for (let colIndex = 0; colIndex < data[rowIndex].length; colIndex++) {
-      const cell = data[rowIndex][colIndex];
-      
-      if (cell?.raw && typeof cell.raw === 'string') {
-        // TODO: Check if column has :preserve-spaces format and skip trimming
-        // For now, always trim (preserving existing CSV behavior)
-        const originalRaw = cell.raw;
-        cell.raw = cell.raw.trim();
-        
-        // Also update the value if it was set to the original raw value (non-formulas)
-        if (!cell.formula && cell.value === originalRaw) {
-          cell.value = cell.raw;
-        }
-      }
-    }
-  }
-}
 
 /**
  * Phase 1: Pre-calculation type inference for columns without explicit type annotations

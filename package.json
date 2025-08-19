@@ -61,6 +61,7 @@
     "vitest": "^1.0.0"
   },
   "dependencies": {
+    "csv-parse": "^6.1.0",
     "date-fns": "^3.6.0",
     "papaparse": "^5.4.1"
   },

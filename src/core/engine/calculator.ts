@@ -398,7 +398,7 @@ class SheetCalculator {
     const dependencies = new Set<string>();
     
     try {
-      const ast = parseFormula(formula, {});
+      const ast = parseFormula(formula);
       this.collectDependencies(ast, dependencies);
     } catch (error) {
       // If formula parsing fails, assume no dependencies
@@ -469,7 +469,7 @@ class SheetCalculator {
       }
       
       // Parse and evaluate the formula
-      const ast = parseFormula(cell.formula, {});
+      const ast = parseFormula(cell.formula);
       const result = this.evaluateAST(ast);
       
       // Store the calculated value

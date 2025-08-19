@@ -240,3 +240,16 @@ export abstract class BaseFunction implements SpreadsheetFunction {
     return allValues;
   }
 }
+
+/**
+ * Get cell value as a string with null handling
+ * This is a helper function for text functions to consistently handle null vs empty string
+ * @param value - The cell value to convert
+ * @returns String representation (null becomes "")
+ */
+export function getCellValueAsString(value: any): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value);
+}

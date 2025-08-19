@@ -274,7 +274,7 @@ Text,,"",=COUNTA(A4:C4)`;
       
       expect(result.sheets[0].data[0][3].value).toBe(3); // "Hello", 10, "World"
       expect(result.sheets[0].data[1][3].value).toBe(1); // null, 20, null
-      expect(result.sheets[0].data[2][3].value).toBe(1); // "Text", null, null (both empty values become null)
+      expect(result.sheets[0].data[2][3].value).toBe(2); // "Text", null, "" (quoted empty string counts)
     });
 
     it('should calculate COUNTA with individual cells', () => {
@@ -308,7 +308,7 @@ Value1,,Value3,=COUNTA(A2:C2)
       const result = calculate(parsed);
       
       expect(result.sheets[0].data[0][3].value).toBe(2); // "Value1", null, "Value3"
-      expect(result.sheets[0].data[1][3].value).toBe(0); // null, null, null (all empty values become null)
+      expect(result.sheets[0].data[1][3].value).toBe(1); // null, null, "" (quoted empty string counts)
       expect(result.sheets[0].data[2][3].value).toBe(1); // null, null, "Value6"
     });
   });
@@ -454,7 +454,7 @@ Total,=SUM(B2:B3),=SUM(C2:C3),=SUM(D2:D3)`;
 
     it('should handle complex text function combinations', () => {
       const rcsv = `Name:text,Email:text,Domain:text,Username:text,Formatted:text
-John Smith,john.smith@company.com,=RIGHT(B2,LEN(B2)-FIND("@",B2)),=LEFT(B2,FIND("@",B2)-1),=UPPER(LEFT(A2,1)) & LOWER(RIGHT(A2,LEN(A2)-FIND(" ",A2)))`;
+John Smith,john.smith@company.com,"=RIGHT(B2,LEN(B2)-FIND(""@"",B2))","=LEFT(B2,FIND(""@"",B2)-1)","=UPPER(LEFT(A2,1)) & LOWER(RIGHT(A2,LEN(A2)-FIND("" "",A2)))"`;  
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -466,13 +466,13 @@ John Smith,john.smith@company.com,=RIGHT(B2,LEN(B2)-FIND("@",B2)),=LEFT(B2,FIND(
 
     it('should handle text functions with mathematical operations', () => {
       const rcsv = `Text:text,Number:number,Length:number,Repeated:text,Value:number
-"123",456,=LEN(A2),"=REPT(A2,B2/100)",=VALUE(A2)+B2`;
+"123",456,=LEN(A2),"=REPT(A2,B2/100)","=VALUE(A2)+B2"`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
       
       expect(result.sheets[0].data[0][2].value).toBe(3);          // Length of "123"
-      expect(result.sheets[0].data[0][3].value).toBe('123123123123123'); // "123" repeated 4.56 times (4 times)
+      expect(result.sheets[0].data[0][3].value).toBe('123123123123'); // "123" repeated 4.56 times (4 times)
       expect(result.sheets[0].data[0][4].value).toBe(579);        // 123 + 456
     });
 
@@ -488,8 +488,8 @@ John Smith,john.smith@company.com,=RIGHT(B2,LEN(B2)-FIND("@",B2)),=LEFT(B2,FIND(
 
     it('should handle text functions in conditional logic', () => {
       const rcsv = `Name:text,Valid:text,Length:number,Message:text
-John,=IF(LEN(A2)>3,"Valid","Invalid"),=LEN(A2),=CONCATENATE("Name: ",A2," - ",B2)
-Al,=IF(LEN(A2)>3,"Valid","Invalid"),=LEN(A2),=CONCATENATE("Name: ",A2," - ",B2)`;
+John,"=IF(LEN(A2)>3,""Valid"",""Invalid"")",=LEN(A2),"=CONCATENATE(""Name: "",A2,"" - "",B2)"
+Al,"=IF(LEN(A2)>3,""Valid"",""Invalid"")",=LEN(A2),"=CONCATENATE(""Name: "",A2,"" - "",B2)"`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);
@@ -504,7 +504,7 @@ Al,=IF(LEN(A2)>3,"Valid","Invalid"),=LEN(A2),=CONCATENATE("Name: ",A2," - ",B2)`
 
     it('should handle text formatting with numbers', () => {
       const rcsv = `Amount:number,Percentage:number,Currency:text,Percent:text,Fixed:text
-1234.5678,0.1234,=TEXT(A2,"#,##0.00"),=TEXT(B2,"0.00%"),=TEXT(A2,"0.00")`;
+1234.5678,0.1234,"=TEXT(A2,""#,##0.00"")","=TEXT(B2,""0.00%"")","=TEXT(A2,""0.00"")"`;
       
       const parsed = parseStructure(rcsv);
       const result = calculate(parsed);

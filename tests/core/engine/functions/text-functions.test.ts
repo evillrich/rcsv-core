@@ -242,10 +242,8 @@ Hello World,=LEN(A2)`;
       expect(result.sheets[0].data[0][1].value).toBe(0);
     });
 
-    // TODO: Enable when :preserve-spaces format is implemented
-    it.skip('should handle spaces', () => {
-      // This test requires :preserve-spaces format to work
-      // e.g., A:text:preserve-spaces,Result:number
+    it('should handle spaces', () => {
+      // Test spaces in quoted field - csv-parse should preserve these
       const rcsv = `A:text,Result:number
 "   ",=LEN(A2)`;
       
@@ -713,10 +711,8 @@ Hello,hello,"=EXACT(A2,B2)"`;
       expect(result.sheets[0].data[0][2].value).toBe(true);
     });
 
-    // TODO: Enable when :preserve-spaces format is implemented
-    it.skip('should handle spaces', () => {
-      // This test requires :preserve-spaces format to work
-      // e.g., A:text:preserve-spaces,B:text,Result:text
+    it('should handle spaces', () => {
+      // Test spaces in quoted fields - csv-parse should preserve differences
       const rcsv = `A:text,B:text,Result:text
 "Hello ","Hello","=EXACT(A2,B2)"`;
       
