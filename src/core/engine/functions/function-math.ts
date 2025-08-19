@@ -11,7 +11,7 @@ import { BaseFunction, validateArgumentCount, toNumber } from './function-utils'
  * Usage: ABS(number)
  */
 export class AbsFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('ABS', args, 1);
     
     const value = evaluateAST(args[0]);
@@ -25,7 +25,7 @@ export class AbsFunction extends BaseFunction {
  * Usage: ROUND(number, digits)
  */
 export class RoundFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('ROUND', args, 2);
     
     const value = evaluateAST(args[0]);
@@ -48,7 +48,7 @@ export class RoundFunction extends BaseFunction {
  * Usage: POWER(number, power) or use ^ operator
  */
 export class PowerFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('POWER', args, 2);
     
     const base = evaluateAST(args[0]);
@@ -66,7 +66,7 @@ export class PowerFunction extends BaseFunction {
  * Usage: SQRT(number)
  */
 export class SqrtFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('SQRT', args, 1);
     
     const value = evaluateAST(args[0]);
@@ -85,7 +85,7 @@ export class SqrtFunction extends BaseFunction {
  * Usage: MOD(number, divisor)
  */
 export class ModFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('MOD', args, 2);
     
     const dividend = evaluateAST(args[0]);
@@ -107,7 +107,7 @@ export class ModFunction extends BaseFunction {
  * Usage: CEILING(number, significance)
  */
 export class CeilingFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('CEILING', args, 2);
     
     const number = evaluateAST(args[0]);
@@ -129,7 +129,7 @@ export class CeilingFunction extends BaseFunction {
  * Usage: FLOOR(number, significance)
  */
 export class FloorFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('FLOOR', args, 2);
     
     const number = evaluateAST(args[0]);
@@ -151,7 +151,7 @@ export class FloorFunction extends BaseFunction {
  * Usage: TRUNC(number, digits)
  */
 export class TruncFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentCount('TRUNC', args, 2);
     
     const number = evaluateAST(args[0]);

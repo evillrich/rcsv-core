@@ -613,7 +613,7 @@ function parseCSVData(csvText: string): {
   
   // Convert raw data to CellValue matrix
   const data: CellValue[][] = dataRows.map(row => {
-    return row.map((cellText, colIndex) => {
+    return row.map((cellText, _colIndex) => {
       const cell: CellValue = {
         raw: cellText,
         value: cellText,

@@ -27,7 +27,7 @@ export class IndexFunction extends BaseFunction {
  * Usage: MATCH(lookup_value, lookup_array, [match_type])
  */
 export class MatchFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber: (ref: string) => number, getCellValueAsString: (ref: string) => string): number {
+  execute(args: ASTNode[], _evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('MATCH', args, 2, 3);
     
     // Implementation placeholder - would require array search logic

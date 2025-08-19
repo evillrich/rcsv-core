@@ -6,10 +6,10 @@ import { parseFormula as peggyParseFormula, SyntaxError } from './formula';
  */
 export function parseFormula(input: string) {
   try {
-    return peggyParseFormula(input);
+    return peggyParseFormula(input, {});
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(translateErrorMessage(error, input));
+      throw new Error(translateErrorMessage(error as any, input));
     }
     throw error;
   }
@@ -18,7 +18,7 @@ export function parseFormula(input: string) {
 /**
  * Translate Peggy error messages into user-friendly messages
  */
-function translateErrorMessage(error: SyntaxError, input: string): string {
+function translateErrorMessage(error: any, input: string): string {
   const message = error.message;
   const location = error.location;
   

@@ -7,7 +7,6 @@ import type { ASTNode } from '../types';
 import { 
   BaseFunction, 
   validateArgumentRange, 
-  flattenToNumbers, 
   flattenToValues, 
   isNumeric, 
   isCountANonEmpty 
@@ -18,7 +17,7 @@ import {
  * Usage: SUM(value1, [value2], ...)
  */
 export class SumFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('SUM', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -31,7 +30,7 @@ export class SumFunction extends BaseFunction {
  * Usage: AVERAGE(value1, [value2], ...)
  */
 export class AverageFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('AVERAGE', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -49,7 +48,7 @@ export class AverageFunction extends BaseFunction {
  * Usage: COUNT(value1, [value2], ...)
  */
 export class CountFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('COUNT', args, 1);
     
     let count = 0;
@@ -66,7 +65,7 @@ export class CountFunction extends BaseFunction {
  * Usage: COUNTA(value1, [value2], ...)
  */
 export class CountAFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string, getRangeRawValues?: (start: string, end: string) => any[]): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string, getRangeRawValues?: (start: string, end: string) => any[]): number {
     validateArgumentRange('COUNTA', args, 1);
     
     let count = 0;
@@ -90,7 +89,7 @@ export class CountAFunction extends BaseFunction {
  * Usage: MIN(value1, [value2], ...)
  */
 export class MinFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('MIN', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -108,7 +107,7 @@ export class MinFunction extends BaseFunction {
  * Usage: MAX(value1, [value2], ...)
  */
 export class MaxFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('MAX', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -126,7 +125,7 @@ export class MaxFunction extends BaseFunction {
  * Usage: MEDIAN(value1, [value2], ...)
  */
 export class MedianFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('MEDIAN', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -154,7 +153,7 @@ export class MedianFunction extends BaseFunction {
  * Usage: MODE(value1, [value2], ...)
  */
 export class ModeFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('MODE', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -197,7 +196,7 @@ export class ModeFunction extends BaseFunction {
  * Usage: VAR(value1, [value2], ...)
  */
 export class VarFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('VAR', args, 1);
     
     const allNumbers = this.collectNumbers(args, evaluateAST);
@@ -218,7 +217,7 @@ export class VarFunction extends BaseFunction {
  * Usage: STDEV(value1, [value2], ...)
  */
 export class StdevFunction extends BaseFunction {
-  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, getCellValueAsNumber?: (ref: string) => number, getCellValueAsString?: (ref: string) => string): number {
+  execute(args: ASTNode[], evaluateAST: (node: ASTNode) => any, _getCellValueAsNumber?: (ref: string) => number, _getCellValueAsString?: (ref: string) => string): number {
     validateArgumentRange('STDEV', args, 1);
     
     // Use VAR function and take square root
